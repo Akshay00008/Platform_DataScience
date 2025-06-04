@@ -35,6 +35,8 @@ def update_sync_status(chatbot_id, version_id):
         db = client["ChatbotDB"]
         collection = db['chatbotversions']
 
+        
+
         try:
             chatbot_obj_id = ObjectId(chatbot_id)
             version_obj_id = ObjectId(version_id)
@@ -47,10 +49,15 @@ def update_sync_status(chatbot_id, version_id):
             {"$set": {"sync_status": True}}
         )
 
+        print("results **********")
+        print(result)
+
         if result.modified_count > 0:
             loggs.Logging(f"✅ Sync status updated successfully for chatbot_id={chatbot_id}, version_id={version_id}")
+            print("0")
         else:
             loggs.Logging(f"⚠️ No document updated for chatbot_id={chatbot_id}, version_id={version_id}")
+            print("1")
 
     except Exception as e:
         loggs.Logging(f"❌ Failed to update sync status: {e}")
