@@ -4,7 +4,7 @@ import requests
 from bs4 import BeautifulSoup
 
 
-def crawl_website(start_url, max_links=5):
+def crawl_website(start_url, max_links=50):
     visited = set()
     queue = [start_url]
     base_domain = urlparse(start_url).netloc
