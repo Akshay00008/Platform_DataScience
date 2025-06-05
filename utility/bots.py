@@ -138,11 +138,11 @@ openai_api_key = os.getenv("OPENAI_API_KEY")
 # Initialize OpenAI client
 client = OpenAI(api_key=openai_api_key)
 
-# Initialize embedding model
+# Embedding model
 embedding_model = OpenAIEmbeddings(model="text-embedding-3-large")
 
-# Load FAISS vectorstore
-faiss_path = r"/home/bramhesh_srivastav/Platform_DataScience/website_faiss_index"
+# FAISS vectorstore
+faiss_path = r"C:\Users\hp\Desktop\Platform_16-05-2025\Platform_DataScience\website_faiss_index"
 vectorstore = FAISS.load_local(faiss_path, embedding_model, allow_dangerous_deserialization=True)
 
 # MongoDB setup
@@ -150,9 +150,11 @@ mongo_client = pymongo.MongoClient("mongodb://dev:N47309HxFWE2Ehc@35.209.224.122
 db = mongo_client["ChatbotDB"]
 collection = db['faqs']
 
+
 def search_faiss(query, k=10):
     results = vectorstore.similarity_search(query, k=k)
     return [doc.page_content for doc in results]
+
 
 def extract_existing_faqs(chunks):
     joined_chunks = "\n\n".join(chunks)
@@ -176,6 +178,7 @@ A: ...
     )
     return response.choices[0].message.content
 
+
 def generate_faqs_from_vectors(chunks, target_count=50):
     joined_chunks = "\n\n".join(chunks[:30])
     prompt = f"""
@@ -196,6 +199,7 @@ A: ...
     )
     return response.choices[0].message.content
 
+
 def parse_faq_text(faq_text):
     pattern = r"Q:\s*(.+?)\s*A:\s*(.+?)(?=\nQ:|\Z)"
     matches = re.findall(pattern, faq_text, re.DOTALL)
@@ -207,9 +211,17 @@ def parse_faq_text(faq_text):
         })
     return faqs
 
-def save_faqs_to_mongo(faq_list):
-    if not faq_list:
-        return 0
-    result = collection.insert_many(faq_list)
-    return len(result.inserted_ids)
 
+def save_faqs_to_mongo(faq_list, chatbot_id, version_id):
+    if not faq_list:
+        print("No FAQs to save.")
+        return 0
+
+    for faq in faq_list:
+        faq["chatbot_id"] = chatbot_id
+        faq["version_id"] = version_id
+        faq["is_enabled"] = False
+
+    result = collection.insert_many(faq_list)
+    print(f"Inserted {len(result.inserted_ids)} FAQs into MongoDB.")
+    return len(result.inserted_ids)

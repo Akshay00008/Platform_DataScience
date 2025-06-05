@@ -256,35 +256,40 @@ def get_status():
             loggs.Logging(f"⏳ {active_threads} task(s) still running")
             return jsonify({"status": f"{active_threads} task(s) still running"})
         
-@app.route("/faqs", methods=["GET"])        
+@app.route("/faqs", methods=["POST"])
 def faqs_endpoint():
     data = request.get_json()
+
     query = data.get("query")
+    chatbot_id = data.get("chatbot_id")
+    version_id = data.get("version_id")
     top_k = data.get("top_k", 20)
     generated_faq_count = data.get("generated_faq_count", 50)
 
-    if not query:
-        return jsonify({"error": "Query is required"}), 400
+    if not query or not chatbot_id or not version_id:
+        return jsonify({"error": "query, chatbot_id, and version_id are required"}), 400
 
     try:
         top_chunks = bots.search_faiss(query, k=top_k)
 
         extracted_faq_text = bots.extract_existing_faqs(top_chunks)
         extracted_faqs = bots.parse_faq_text(extracted_faq_text)
-        inserted_existing_count = bots.save_faqs_to_mongo(extracted_faqs)
+        inserted_existing_count = bots.save_faqs_to_mongo(extracted_faqs, chatbot_id, version_id)
 
         generated_faq_text = bots.generate_faqs_from_vectors(top_chunks, target_count=generated_faq_count)
         generated_faqs = bots.parse_faq_text(generated_faq_text)
-        inserted_generated_count = bots.save_faqs_to_mongo(generated_faqs)
+        inserted_generated_count = bots.save_faqs_to_mongo(generated_faqs, chatbot_id, version_id)
 
         return jsonify({
-            "extracted_faq_text": extracted_faq_text,
+            # "extracted_faq_text": extracted_faq_text,
             "inserted_existing_faq_count": inserted_existing_count,
             # "generated_faq_text": generated_faq_text,
             "inserted_generated_faq_count": inserted_generated_count,
         })
     except Exception as e:
         return jsonify({"error": str(e)}), 500
+
+
 
 
 
