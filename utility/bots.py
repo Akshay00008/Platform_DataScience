@@ -212,6 +212,36 @@ def parse_faq_text(faq_text):
     return faqs
 
 
+def categorize_faqs(faq_list, context_chunks):
+    """
+    For each FAQ, use the website content context to assign a category.
+    Returns list of FAQs with added 'category' field.
+    """
+    context_text = "\n\n".join(context_chunks[:30])
+    for faq in faq_list:
+        prompt = f"""
+You are an AI assistant analyzing FAQs based on the following website content:
+
+{context_text}
+
+Assign a concise and relevant category for this FAQ:
+
+Q: {faq['question']}
+A: {faq['answer']}
+
+Return only the category name in one or two words.
+"""
+        response = client.chat.completions.create(
+            model="gpt-4o",
+            messages=[{"role": "user", "content": prompt}],
+            temperature=0.3,
+        )
+        category = response.choices[0].message.content.strip()
+        faq["ai_category_name"] = "product"
+
+    return faq_list
+
+
 def save_faqs_to_mongo(faq_list, chatbot_id, version_id):
     if not faq_list:
         print("No FAQs to save.")
@@ -221,7 +251,9 @@ def save_faqs_to_mongo(faq_list, chatbot_id, version_id):
         faq["chatbot_id"] = chatbot_id
         faq["version_id"] = version_id
         faq["is_enabled"] = False
+        faq["category_name"] = "New"
 
     result = collection.insert_many(faq_list)
     print(f"Inserted {len(result.inserted_ids)} FAQs into MongoDB.")
     return len(result.inserted_ids)
+

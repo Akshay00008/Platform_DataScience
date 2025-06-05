@@ -14,6 +14,8 @@ from utility.logger_file import Logs
 from bson import ObjectId
 import pymongo
 import utility.bots as bots
+from utility.guideance_bot import run_guidance_pipeline
+from utility.handoff import generate_handoff_guidance
 
 loggs = Logs()
 
@@ -288,6 +290,45 @@ def faqs_endpoint():
         })
     except Exception as e:
         return jsonify({"error": str(e)}), 500
+    
+@app.route("/guidance", methods=["POST"])
+def guidance_endpoint():
+    data = request.get_json()
+    chatbot_id = data.get("chatbot_id")
+    version_id = data.get("version_id")
+    query = data.get("query", "overview")
+
+    if not chatbot_id or not version_id:
+        return jsonify({"error": "chatbot_id and version_id are required"}), 400
+
+    try:
+        guidance_docs = run_guidance_pipeline(chatbot_id, version_id, query=query)
+        return jsonify({
+            "inserted_guidance_count": len(guidance_docs),
+            # "guidance_preview": guidance_docs[:3]  # Optional preview
+        })
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
+    
+
+
+
+@app.route("/handoff-guidance", methods=["POST"])
+def handoff_guidance_endpoint():
+    data = request.get_json()
+    chatbot_id = data.get("chatbot_id")
+    version_id = data.get("version_id")
+    query = data.get("query", "How can the chatbot assist users?")
+
+    if not all([chatbot_id, version_id]):
+        return jsonify({"error": "chatbot_id and version_id are required."}), 400
+
+    try:
+        guidance_text = generate_handoff_guidance(query, chatbot_id, version_id)
+        return jsonify({"handoff_guidance": guidance_text})
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500 
+
 
 
 
