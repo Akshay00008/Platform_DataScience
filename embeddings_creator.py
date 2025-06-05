@@ -117,71 +117,63 @@ def embeddings_from_gcb(bucket_name, blob_names):
         logger.error(f"Error in embeddings_from_gcb: {e}")
         return f"An error occurred: {e}"
 
-def embeddings_from_website_content():
+def embeddings_from_website_content(json_data):
+   
 
+    # Load JSON data
+    
 
-    # Load JSON file
-    json_file_path = "website_data.json"
-
-    with open(json_file_path, "r", encoding="utf-8") as file:
-        data = json.load(file)
-
-    # Extract relevant text fields
     documents = []
-    for item in data:
+    metadata = []
+
+    for idx, item in enumerate(json_data):
         text_parts = []
-        if "Title" in item and item["Title"]:
+        if item.get("Title"):
             text_parts.append(item["Title"])
-        if "Meta Description" in item and item["Meta Description"] != "No description":
+        if item.get("Meta Description") and item["Meta Description"] != "No description":
             text_parts.append(item["Meta Description"])
-        if "Headings" in item:
-            for key, values in item["Headings"].item():
+        if item.get("Headings"):
+            for key, values in item["Headings"].items():
                 text_parts.extend(values)
-        if "Paragraphs" in item:
+        if item.get("Paragraphs"):
             text_parts.extend(item["Paragraphs"])
-        
-        # Combine extracted text into a single document
+
         combined_text = " ".join(text_parts).strip()
         if combined_text:
             documents.append(combined_text)
+            metadata.append({"source": f"web_doc_{idx}"})
 
-    # Ensure documents are not empty
     if not documents:
-        raise ValueError("No relevant text extracted from JSON. Check the JSON structure.")
+        raise ValueError("No valid website content found for embedding.")
 
-   
-
-    # Text splitting
-    text_chunks = []
+    # Split text into chunks
     text_splitter = RecursiveCharacterTextSplitter(
         chunk_size=1000,
         chunk_overlap=20,
         length_function=len,
         is_separator_regex=False,
     )
+    text_chunks = []
+    chunk_metadata = []
 
-    for doc in documents:
-        text_chunks.extend(text_splitter.split_text(doc))
+    for i, doc in enumerate(documents):
+        chunks = text_splitter.split_text(doc)
+        text_chunks.extend(chunks)
+        chunk_metadata.extend([metadata[i]] * len(chunks))
 
-    # Ensure text_chunks are not empty
     if not text_chunks:
-        raise ValueError("No text chunks were created. Check if the extracted text is valid.")
+        raise ValueError("No text chunks were created from website content.")
 
-    # Generate embeddings
-    embeddings = OpenAIEmbeddings()
+    # Initialize OpenAI embeddings
+    embeddings = OpenAIEmbeddings(model="text-embedding-3-large")
 
-    # Test the embedding model
-    try:
-        test_embedding = embeddings.embed_query("test")
-    except Exception as e:
-        raise RuntimeError(f"Embedding model error: {e}")
+    # Build FAISS index
+    faiss_index = FAISS.from_texts(text_chunks, embeddings, metadatas=chunk_metadata)
 
-    # Convert to FAISS vector database
-    faiss_index_vectors = FAISS.from_texts(text_chunks, embeddings)
+    # Save index and metadata
+    faiss_index.save_local("website_faiss_index")
 
-    # Save FAISS index locally
-    faiss_index_vectors.save_local("_Website_faiss_index_vectors")
-
+    print(f"✅ FAISS index saved with {len(text_chunks)} chunks.")
     return "FAISS vector store saved successfully!"
 
 

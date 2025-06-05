@@ -32,3 +32,23 @@ def Bot_Retrieval(chatbot_id, version_id):
     parsed_json = json.loads(json_data)
     
     return parsed_json
+
+def website_tag_saving(website_taggers,chatbot_id,version_id):
+    client = pymongo.MongoClient("mongodb://dev:N47309HxFWE2Ehc@35.209.224.122:27017")
+    db = client["ChatbotDB"]
+    collection = db['website_tags']
+
+    print("website_taggers")
+    if isinstance(website_taggers, list):
+        # If it's a list of tags/documents
+        collection.insert_many(website_taggers)
+    elif isinstance(website_taggers, dict):
+        # If it's a single document
+        collection.insert_one(website_taggers)
+    else:
+        print("Invalid data format for MongoDB insert")
+        raise ValueError("Invalid data format for MongoDB insert")
+       
+
+    print("Tags inserted successfully.")
+

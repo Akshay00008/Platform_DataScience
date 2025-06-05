@@ -6,12 +6,14 @@ from threading import Thread, Lock
 from werkzeug.middleware.proxy_fix import ProxyFix
 from .On_boarding import chatbot
 from utility.web_Scrapper import crawl_website
-from Databases.mongo import Bot_Retrieval
-from embeddings_creator import embeddings_from_gcb
+from Databases.mongo import Bot_Retrieval,website_tag_saving
+from embeddings_creator import embeddings_from_gcb, embeddings_from_website_content
 from Youtube_extractor import extract_and_store_descriptions
+from utility.website_tag_generator import new_generate_tags_from_gpt
 from utility.logger_file import Logs
 from bson import ObjectId
 import pymongo
+import utility.bots as bots
 
 loggs = Logs()
 
@@ -69,14 +71,32 @@ def mark_thread_done():
         if active_threads == 0:
             loggs.Logging("✅ All background tasks completed. Status: completed")
 
-def process_scraping(url):
+def process_scraping(url,chatbot_id,version_id):
     try:
         loggs.Logging(f"Started background scraping for URL: {url}")
+        print("Started background scraping for URL: {url}")
         df = crawl_website(url)
         json_data = df.to_dict(orient="records")
         with open("website_data.json", "w") as f:
             json.dump(json_data, f, indent=4)
         loggs.Logging(f"Scraping complete for URL: {url}")
+        print("Scraping complete for URL: {url}")
+
+        website_taggers=new_generate_tags_from_gpt(json_data)
+
+        print("***********************")
+        
+        website_tag_saving(website_taggers,chatbot_id,version_id)
+        print("tags created and stored in mongo")
+
+        embeddings_from_website_content(json_data)
+
+        print("Webiste vector created")
+        loggs.Logging(f"Tags generated for URL: {url}")
+
+
+
+
     except Exception as e:
         loggs.Logging(f"Error during background scraping: {str(e)}")
     finally:
@@ -151,12 +171,15 @@ def scrapper():
     try:
         data = request.get_json(force=True)
         url = data.get('url')
+        chatbot_id = data.get('chatbot_id')
+        version_id = data.get('version_id')
+
         if not url:
             return jsonify({"error": "Missing 'url' parameter"}), 400
 
         with lock:
             active_threads += 1
-        Thread(target=process_scraping, args=(url,)).start()
+        Thread(target=process_scraping, args=(url,chatbot_id,version_id)).start()
         loggs.Logging(f"✅ Web scraping started for {url}")
         return jsonify({"result": "Scraping started in background."}), 200
     except Exception as e:
@@ -232,3 +255,48 @@ def get_status():
         else:
             loggs.Logging(f"⏳ {active_threads} task(s) still running")
             return jsonify({"status": f"{active_threads} task(s) still running"})
+        
+@app.route("/faqs", methods=["GET"])        
+def faqs_endpoint():
+    data = request.get_json()
+    query = data.get("query")
+    top_k = data.get("top_k", 20)
+    generated_faq_count = data.get("generated_faq_count", 50)
+
+    if not query:
+        return jsonify({"error": "Query is required"}), 400
+
+    try:
+        top_chunks = bots.search_faiss(query, k=top_k)
+
+        extracted_faq_text = bots.extract_existing_faqs(top_chunks)
+        extracted_faqs = bots.parse_faq_text(extracted_faq_text)
+        inserted_existing_count = bots.save_faqs_to_mongo(extracted_faqs)
+
+        generated_faq_text = bots.generate_faqs_from_vectors(top_chunks, target_count=generated_faq_count)
+        generated_faqs = bots.parse_faq_text(generated_faq_text)
+        inserted_generated_count = bots.save_faqs_to_mongo(generated_faqs)
+
+        return jsonify({
+            "extracted_faq_text": extracted_faq_text,
+            "inserted_existing_faq_count": inserted_existing_count,
+            # "generated_faq_text": generated_faq_text,
+            "inserted_generated_faq_count": inserted_generated_count,
+        })
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
+
+
+
+
+
+
+
+
+
+
+
+
+
+    
+    
