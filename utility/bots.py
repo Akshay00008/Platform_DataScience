@@ -252,6 +252,7 @@ def save_faqs_to_mongo(faq_list, chatbot_id, version_id):
         faq["version_id"] = version_id
         faq["is_enabled"] = False
         faq["category_name"] = "New"
+        faq["ai_category_name"] = "product"
 
     result = collection.insert_many(faq_list)
     print(f"Inserted {len(result.inserted_ids)} FAQs into MongoDB.")
