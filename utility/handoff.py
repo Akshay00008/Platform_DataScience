@@ -14,7 +14,7 @@ openai_api_key = os.getenv("OPENAI_API_KEY")
 # MongoDB setup
 mongo_client = pymongo.MongoClient("mongodb://dev:N47309HxFWE2Ehc@35.209.224.122:27017")
 db = mongo_client["ChatbotDB"]
-collection = db['handoff_guidance']
+collection = db['handoffscenarios']
 
 # Vector DB setup
 faiss_path = r"/home/bramhesh_srivastav/Platform_DataScience/website_faiss_index"

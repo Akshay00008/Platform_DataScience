@@ -21,7 +21,7 @@ vectorstore = FAISS.load_local(faiss_path, embedding_model, allow_dangerous_dese
 # MongoDB connection
 mongo_client = pymongo.MongoClient("mongodb://dev:N47309HxFWE2Ehc@35.209.224.122:27017")
 db = mongo_client["ChatbotDB"]
-guidance_collection = db["guideance"]
+guidance_collection = db["guidanceflows"]
 
 # Fetch content from vector store
 def fetch_vector_content(query="overview", k=25):
