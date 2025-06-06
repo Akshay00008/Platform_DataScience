@@ -6,6 +6,7 @@ import pymongo
 from langchain_community.vectorstores import FAISS
 from langchain_openai import OpenAIEmbeddings
 from openai import OpenAI
+from bson import ObjectId
 
 # Load environment variables
 load_dotenv()
@@ -55,6 +56,13 @@ Provide output in structured guidance points with section titles.
     )
 
     guidance_text = response.choices[0].message.content
+
+    try:
+        chatbot_oid = ObjectId(chatbot_id)
+        version_oid = ObjectId(version_id)
+    except Exception as e:
+        print("Invalid ObjectId:", e)
+        return 0
 
     guidance_doc = {
         "chatbot_id": chatbot_id,

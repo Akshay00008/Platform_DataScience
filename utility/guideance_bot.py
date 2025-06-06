@@ -4,6 +4,7 @@ import pymongo
 from langchain_community.vectorstores import FAISS
 from langchain_openai import OpenAIEmbeddings
 from openai import OpenAI
+from bson import ObjectId
 
 # Load environment variables
 load_dotenv()
@@ -60,6 +61,13 @@ def parse_guidance(text, chatbot_id, version_id):
     sections = text.strip().split("\n\n")
     parsed = []
 
+    try:
+        chatbot_oid = ObjectId(chatbot_id)
+        version_oid = ObjectId(version_id)
+    except Exception as e:
+        print("Invalid ObjectId:", e)
+        return 0
+
     for section in sections:
         lines = section.strip().split("\n")
         if len(lines) < 2:
@@ -67,8 +75,8 @@ def parse_guidance(text, chatbot_id, version_id):
         title = lines[0].strip()
         explanation = "\n".join(lines[1:]).strip()
         parsed.append({
-            "chatbot_id": chatbot_id,
-            "version_id": version_id,
+            "chatbot_id": chatbot_oid,
+            "version_id": version_oid,
             "section_title": title,
             "content": explanation,
             "is_enabled": False

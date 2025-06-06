@@ -126,6 +126,7 @@ import os
 from dotenv import load_dotenv
 import pymongo
 import re
+from bson import ObjectId
 
 from langchain_community.vectorstores import FAISS
 from langchain_openai import OpenAIEmbeddings
@@ -246,10 +247,17 @@ def save_faqs_to_mongo(faq_list, chatbot_id, version_id):
     if not faq_list:
         print("No FAQs to save.")
         return 0
+    
+    try:
+        chatbot_oid = ObjectId(chatbot_id)
+        version_oid = ObjectId(version_id)
+    except Exception as e:
+        print("Invalid ObjectId:", e)
+        return 0
 
     for faq in faq_list:
-        faq["chatbot_id"] = chatbot_id
-        faq["version_id"] = version_id
+        faq["chatbot_id"] = chatbot_oid
+        faq["version_id"] = version_oid
         faq["is_enabled"] = False
         faq["category_name"] = "New"
         faq["ai_category_name"] = "product"
