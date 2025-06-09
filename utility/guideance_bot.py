@@ -78,7 +78,10 @@ def parse_guidance(text, chatbot_id, version_id):
             "chatbot_id": chatbot_oid,
             "version_id": version_oid,
             "section_title": title,
-            "content": explanation,
+            "category_name" : "New",
+            "ai_category_name" : "Old",
+            "source_type" : "ai",
+            "description": explanation,
             "is_enabled": False
         })
     return parsed

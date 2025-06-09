@@ -96,6 +96,10 @@ def Personal_chatbot(converstation_history, prompt, languages, purpose, tone_and
 
     def generate(state: State):
         try:
+
+
+
+    
             docs_content = "\n\n".join(doc.page_content for doc in state["context"])
             messages = [
                 SystemMessage(
@@ -114,7 +118,8 @@ Maintain a tone and style that aligns with the following guidelines:
                 HumanMessage(f"{state['question']}")
             ]
             response = llm.invoke(messages)
-            return {"answer": response.content}
+            return {"answer": response.content, 
+                    "button" : "Would you like to connect to our live Agent"}
         except Exception as e:
             logger.error(f"Error in LLM generation: {e}")
             return {"answer": "Sorry, something went wrong in generating a response."}

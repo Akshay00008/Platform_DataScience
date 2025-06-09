@@ -16,6 +16,7 @@ import pymongo
 import utility.bots as bots
 from utility.guideance_bot import run_guidance_pipeline
 from utility.handoff import generate_handoff_guidance
+from utility.retrain_bot import fetch_data,fetch_faqs_and_create_vector
 
 loggs = Logs()
 
@@ -331,6 +332,28 @@ def handoff_guidance_endpoint():
 
 
 
+app.route("/retrain",methods=["POST"] ) 
+def retrain_bot():
+    data = request.get_json()
+    chatbot_id = data.get("chatbot_id")
+    version_id = data.get("version_id")
+    collection_name = data.get("collection_name")
+
+    request_body = {
+        "chatbot_id": chatbot_id,
+        "version_id": version_id,
+        "collection_name": collection_name
+    }
+
+    merged_result = fetch_data(request_body)
+
+    if "faqs" in request_body["collection_name"]:
+            faq_vector_status = fetch_faqs_and_create_vector(
+            request_body["chatbot_id"],
+            request_body["version_id"]
+        )
+
+    return merged_result
 
 
 

@@ -67,7 +67,9 @@ Provide output in structured guidance points with section titles.
     guidance_doc = {
         "chatbot_id": chatbot_id,
         "version_id": version_id,
-        "guidance": guidance_text,
+        "description": guidance_text,
+        "category_name" : "New",
+        "source_type" : "ai",
         "is_enabled": False
     }
 
