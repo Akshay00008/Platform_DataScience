@@ -65,8 +65,8 @@ Provide output in structured guidance points with section titles.
         return 0
 
     guidance_doc = {
-        "chatbot_id": chatbot_id,
-        "version_id": version_id,
+        "chatbot_id": chatbot_oid,
+        "version_id": version_oid,
         "description": guidance_text,
         "category_name" : "New",
         "source_type" : "ai",
