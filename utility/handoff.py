@@ -18,6 +18,7 @@ db = mongo_client["ChatbotDB"]
 collection = db['handoffscenarios']
 
 # Vector DB setup
+# faiss_path = r"C:\Users\hp\Desktop\Platform_16-05-2025\Platform_DataScience\website_faiss_index"
 faiss_path = r"/home/bramhesh_srivastav/Platform_DataScience/website_faiss_index"
 embedding_model = OpenAIEmbeddings(model="text-embedding-3-large")
 vectorstore = FAISS.load_local(faiss_path, embedding_model, allow_dangerous_deserialization=True)

@@ -63,6 +63,7 @@ def chatbot(chatbot_id, version_id, prompt, user_id):
 
 
         guidelines = fetch_data(request_body)
+        print("Guidelines generated succefull")
         Bot_information = Bot_Retrieval(chatbot_id, version_id)
         if not Bot_information:
             raise ValueError(f"No bot information found for chatbot_id {chatbot_id} and version_id {version_id}")
@@ -77,7 +78,7 @@ def chatbot(chatbot_id, version_id, prompt, user_id):
         purpose = Bot_information[0].get('purpose', "General assistance")
         languages = Bot_information[0].get('supported_languages', ["English"])
         tone_and_style = Bot_information[0].get('tone_style', "Friendly and professional")
-
+        print("receive bot info")
         llm_response = Personal_chatbot(converstation_history, prompt, languages, purpose, tone_and_style, greeting,guidelines)
         converstation_state[user_id].append({'role': 'bot', 'content': llm_response})
 

@@ -74,36 +74,37 @@ def mark_thread_done():
         if active_threads == 0:
             loggs.Logging("✅ All background tasks completed. Status: completed")
 
-def process_scraping(url,chatbot_id,version_id):
+def process_scraping(url, chatbot_id, version_id): 
     try:
         loggs.Logging(f"Started background scraping for URL: {url}")
-        print("Started background scraping for URL: {url}")
+        print(f"Started background scraping for URL: {url}")
+
         df = crawl_website(url)
         json_data = df.to_dict(orient="records")
+
         with open("website_data.json", "w") as f:
             json.dump(json_data, f, indent=4)
+
         loggs.Logging(f"Scraping complete for URL: {url}")
-        print("Scraping complete for URL: {url}")
+        print(f"Scraping complete for URL: {url}")
 
-        website_taggers=new_generate_tags_from_gpt(json_data)
-
+        website_taggers = new_generate_tags_from_gpt(json_data)
         print("***********************")
-        
-        website_tag_saving(website_taggers,chatbot_id,version_id)
-        print("tags created and stored in mongo")
+
+        website_tag_saving(website_taggers, chatbot_id, version_id)
+        print("Tags created and stored in MongoDB")
 
         embeddings_from_website_content(json_data)
+        print("Website vector created")
 
-        print("Webiste vector created")
-        loggs.Logging(f"Tags generated for URL: {url}")
+        loggs.Logging(f"Tags and vectors generated for URL: {url}")
 
-
-
+        # ✅ Only mark thread done if all succeed
+        mark_thread_done()
 
     except Exception as e:
         loggs.Logging(f"Error during background scraping: {str(e)}")
-    finally:
-        mark_thread_done()
+
 
 def background_embedding_task(bucket, blobs):
     try:

@@ -18,8 +18,12 @@ def Bot_Retrieval(chatbot_id, version_id):
     
     query = {"chatbot_id": chatbot_obj_id, "version_id": version_obj_id}
     documents_cursor = collection.find(query)
-    
+    print(documents_cursor)
+    print("status")
     documents = list(documents_cursor)  # list of dicts (BSON documents)
+
+    print("**************")
+    print(documents)
     
     if not documents:
         return {"error": "No documents found for given chatbot_id and version_id"}
