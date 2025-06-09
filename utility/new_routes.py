@@ -332,7 +332,7 @@ def handoff_guidance_endpoint():
 
 
 
-app.route("/retrain",methods=["POST"] ) 
+@app.route("/retrain",methods=["POST"]) 
 def retrain_bot():
     data = request.get_json()
     chatbot_id = data.get("chatbot_id")
