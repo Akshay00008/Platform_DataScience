@@ -12,6 +12,7 @@ from langchain_community.vectorstores import FAISS
 from langchain_openai import OpenAIEmbeddings
 import getpass
 import logging
+from utility.retrain_bot import fetch_data
 
 # Setup logging
 logging.basicConfig(level=logging.INFO)
@@ -53,6 +54,15 @@ converstation_state = {}
 
 def chatbot(chatbot_id, version_id, prompt, user_id):
     try:
+
+        request_body = {
+        "chatbot_id": chatbot_id,
+        "version_id": version_id,
+        "collection_name": ["guidance", "handoff"]
+        }
+
+
+        guidelines = fetch_data(request_body)
         Bot_information = Bot_Retrieval(chatbot_id, version_id)
         if not Bot_information:
             raise ValueError(f"No bot information found for chatbot_id {chatbot_id} and version_id {version_id}")
@@ -68,7 +78,7 @@ def chatbot(chatbot_id, version_id, prompt, user_id):
         languages = Bot_information[0].get('supported_languages', ["English"])
         tone_and_style = Bot_information[0].get('tone_style', "Friendly and professional")
 
-        llm_response = Personal_chatbot(converstation_history, prompt, languages, purpose, tone_and_style, greeting)
+        llm_response = Personal_chatbot(converstation_history, prompt, languages, purpose, tone_and_style, greeting,guidelines)
         converstation_state[user_id].append({'role': 'bot', 'content': llm_response})
 
         return llm_response
@@ -79,7 +89,7 @@ def chatbot(chatbot_id, version_id, prompt, user_id):
         print(e)
         return f"An error occurred: {e}"
 
-def Personal_chatbot(converstation_history, prompt, languages, purpose, tone_and_style, greeting):
+def Personal_chatbot(converstation_history, prompt, languages, purpose, tone_and_style, greeting,guidelines):
     class State(TypedDict):
         question: str
         context: List[Document]
@@ -96,10 +106,7 @@ def Personal_chatbot(converstation_history, prompt, languages, purpose, tone_and
 
     def generate(state: State):
         try:
-
-
-
-    
+     
             docs_content = "\n\n".join(doc.page_content for doc in state["context"])
             messages = [
                 SystemMessage(
@@ -113,6 +120,8 @@ You also have access to context derived from document scores:
 {docs_content}
 Maintain a tone and style that aligns with the following guidelines:
 {tone_and_style}
+Please reply as "Would like to connect you to the live agent  for the following guidelines :
+{guidelines}
 """
                 ),
                 HumanMessage(f"{state['question']}")
