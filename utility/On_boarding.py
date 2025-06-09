@@ -98,7 +98,7 @@ def Personal_chatbot(converstation_history, prompt, languages, purpose, tone_and
 
     def retrieve(state: State):
         try:
-            new_vector_store = FAISS.load_local("faiss_index", embeddings, allow_dangerous_deserialization=True)
+            new_vector_store = FAISS.load_local("website_faiss_index", embeddings, allow_dangerous_deserialization=True)
             retrieved_docs = new_vector_store.similarity_search(state['question'])
             return {"context": retrieved_docs}
         except Exception as e:
