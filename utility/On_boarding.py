@@ -128,7 +128,7 @@ Please reply as "Would like to connect you to the live agent  for the following 
             ]
             response = llm.invoke(messages)
             return {"answer": response.content, 
-                    "button" : "Would you like to connect to our live Agent"}
+                    }
         except Exception as e:
             logger.error(f"Error in LLM generation: {e}")
             return {"answer": "Sorry, something went wrong in generating a response."}
