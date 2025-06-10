@@ -14,41 +14,55 @@ openai_api_key = os.getenv("OPENAI_API_KEY")
 client = OpenAI(api_key=openai_api_key)
 embedding_model = OpenAIEmbeddings(model="text-embedding-3-large")
 
-# Load FAISS
-# faiss_path = r"C:\Users\hp\Desktop\Platform_16-05-2025\Platform_DataScience\website_faiss_index"
+# FAISS vector store path
 faiss_path = r"/home/bramhesh_srivastav/Platform_DataScience/website_faiss_index"
-
-vectorstore = FAISS.load_local(faiss_path, embedding_model, allow_dangerous_deserialization=True)
 
 # MongoDB connection
 mongo_client = pymongo.MongoClient("mongodb://dev:N47309HxFWE2Ehc@35.209.224.122:27017")
 db = mongo_client["ChatbotDB"]
 guidance_collection = db["guidanceflows"]
 
+# Function to load FAISS index fresh every time
+def load_faiss_index():
+    """
+    Load the FAISS index fresh from disk each time it's called.
+    """
+    return FAISS.load_local(faiss_path, embedding_model, allow_dangerous_deserialization=True)
+
 # Fetch content from vector store
 def fetch_vector_content(query="overview", k=25):
+    """
+    Fetch the vector content by performing a similarity search with a fresh FAISS index.
+    """
+    vectorstore = load_faiss_index()  # Reload FAISS index each time
     results = vectorstore.similarity_search(query, k=k)
     return "\n\n".join([doc.page_content for doc in results])
 
 # Generate structured guidance using GPT-4o
 def generate_guidance(content):
     prompt = f"""
-You are a company assistant bot. Based on the content provided below, generate structured business guidance in sections.
+You are a company assistant bot designed to generate behavioral guidelines from provided content. Create a clear, numbered list of operational rules in the following style:
 
-Each section should include a clear **section title** (e.g., "Company Overview", "Product Guidance", "Support Services") followed by a short explanation.
+1. [Specific behavioral restriction]
+2. [Actionable instruction]
+3. [Scope limitation]
+4. [Communication standard]
 
 --- Content ---
 {content}
 ----------------
 
-Format:
-Section Title 1
-Explanation...
+**Extract and format guidelines that specify:**
+- Permitted response scope
+- Prohibited topics/actions
+- Required redirection procedures
+- Communication standards
 
-Section Title 2
-Explanation...
-
-(Use double line breaks to separate each section)
+**Example Output Structure:**
+1. Only respond to queries directly related to [Company/Product Name]
+2. Never discuss pricing or payments - redirect billing questions to customer care
+3. Strictly reference official company documentation when answering
+4. Maintain professional language at all times
 """
     response = client.chat.completions.create(
         model="gpt-4o",

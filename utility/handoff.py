@@ -1,5 +1,3 @@
-# handoff_bot.py
-
 import os
 from dotenv import load_dotenv
 import pymongo
@@ -18,15 +16,25 @@ db = mongo_client["ChatbotDB"]
 collection = db['handoffscenarios']
 
 # Vector DB setup
-# faiss_path = r"C:\Users\hp\Desktop\Platform_16-05-2025\Platform_DataScience\website_faiss_index"
 faiss_path = r"/home/bramhesh_srivastav/Platform_DataScience/website_faiss_index"
 embedding_model = OpenAIEmbeddings(model="text-embedding-3-large")
-vectorstore = FAISS.load_local(faiss_path, embedding_model, allow_dangerous_deserialization=True)
 
 # OpenAI client
 client = OpenAI(api_key=openai_api_key)
 
+# Function to load FAISS index fresh every time
+def load_faiss_index():
+    """
+    Load the FAISS index fresh from disk each time it's called.
+    """
+    return FAISS.load_local(faiss_path, embedding_model, allow_dangerous_deserialization=True)
+
+# Function to fetch content from FAISS
 def search_vector_context(query, k=30):
+    """
+    Fetch the vector content by performing a similarity search with a fresh FAISS index.
+    """
+    vectorstore = load_faiss_index()  # Reload FAISS index each time
     results = vectorstore.similarity_search(query, k=k)
     return "\n\n".join([doc.page_content for doc in results])
 
