@@ -66,21 +66,28 @@ Provide output in structured guidance points with section titles.
 
     guidance_text = response.choices[0].message.content
 
-    try:
-        chatbot_oid = ObjectId(chatbot_id)
-        version_oid = ObjectId(version_id)
-    except Exception as e:
-        print("Invalid ObjectId:", e)
-        return 0
+    # Split the guidance text by sections
+    sections = guidance_text.split("\n\n")  # Split by double new lines between sections
 
-    guidance_doc = {
-        "chatbot_id": chatbot_oid,
-        "version_id": version_oid,
-        "description": guidance_text,
-        "category_name" : "New",
-        "source_type" : "ai",
-        "is_enabled": False
-    }
+    guidance_entries = []
 
-    collection.insert_one(guidance_doc)
+    # Iterate over each section and save it as a separate entry in MongoDB
+    for idx, section in enumerate(sections, start=1):
+        # Create a separate document for each section
+        guidance_entries.append({
+            "chatbot_id": ObjectId(chatbot_id),
+            "version_id": ObjectId(version_id),
+            "section_id": idx,  # Section number (1, 2, 3, etc.)
+            "section_title": f"Guideline {idx}",
+            "description": section.strip(),
+            "category_name": "New",
+            "source_type": "ai",
+            "is_enabled": False
+        })
+
+    # Insert each guideline as a separate document in MongoDB
+    if guidance_entries:
+        collection.insert_many(guidance_entries)  # Insert all guidelines at once
+        print(f"Inserted {len(guidance_entries)} guidelines into MongoDB.")
+
     return guidance_text
