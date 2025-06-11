@@ -24,7 +24,7 @@ db = mongo_client["ChatbotDB"]
 collection = db['faqs']
 
 # FAISS vectorstore path
-faiss_path = r"C:\Users\hp\Desktop\Platform_16-05-2025\Platform_DataScience\website_faiss_index"#/home/bramhesh_srivastav/Platform_DataScience/website_faiss_index"
+faiss_path = r"/home/bramhesh_srivastav/Platform_DataScience/website_faiss_index"#"C:\Users\hp\Desktop\Platform_16-05-2025\Platform_DataScience\website_faiss_index"#/home/bramhesh_srivastav/Platform_DataScience/website_faiss_index"
 
 
 def load_faiss_index():
