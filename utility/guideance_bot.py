@@ -15,7 +15,7 @@ client = OpenAI(api_key=openai_api_key)
 embedding_model = OpenAIEmbeddings(model="text-embedding-3-large")
 
 # FAISS vector store path
-faiss_path = r"/home/bramhesh_srivastav/Platform_DataScience/website_faiss_index"#"C:\Users\hp\Desktop\Platform_16-05-2025\Platform_DataScience\website_faiss_index"#/home/bramhesh_srivastav/Platform_DataScience/website_faiss_index"
+faiss_path = r"C:\Users\hp\Desktop\Platform_16-05-2025\Platform_DataScience\website_faiss_index"#/home/bramhesh_srivastav/Platform_DataScience/website_faiss_index"
 
 # MongoDB connection
 mongo_client = pymongo.MongoClient("mongodb://dev:N47309HxFWE2Ehc@35.209.224.122:27017")
@@ -66,17 +66,6 @@ Redirection Procedures
 
 
 Communication Standards
-
-
-
-For each section, use sub-numbering for each specific guideline.
-
-(e.g., 1.1, 1.2 under section 1; 2.1, 2.2 under section 2, etc.)
-
-
-
-Do not mix explanation numbers across sections. Each section’s guidelines must begin with its section number and sub-number (e.g., 1.1, 2.1, 3.1…).
-
 
 
 Extraction Criteria:
@@ -143,7 +132,7 @@ Example Output Structure:
 
 Your task:
 
-Whenever content is provided between "--- Content ---" {content} and "----------------", extract and format the operational behavioral guidelines in the structure above.  
+Whenever content is provided between "--- Content ---" {content} and "----------------", extract and format the operational behavioral guidelines in the Example Output Structure: above.  
 """
     response = client.chat.completions.create(
         model="gpt-4o",
