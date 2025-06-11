@@ -24,7 +24,7 @@ db = mongo_client["ChatbotDB"]
 collection = db['faqs']
 
 # FAISS vectorstore path
-faiss_path = r"/home/bramhesh_srivastav/Platform_DataScience/website_faiss_index"#"C:\Users\hp\Desktop\Platform_16-05-2025\Platform_DataScience\website_faiss_index"#/home/bramhesh_srivastav/Platform_DataScience/website_faiss_index"
+faiss_path = r"C:\Users\hp\Desktop\Platform_16-05-2025\Platform_DataScience\website_faiss_index"#/home/bramhesh_srivastav/Platform_DataScience/website_faiss_index"
 
 
 def load_faiss_index():
@@ -55,17 +55,9 @@ Extract any frequently asked questions (FAQs) and their answers if available.
 {joined_chunks}
 ---
 
-Return the output as a numbered list in the following format:
-Q1
-A1
-
-Q2
-A2
-
-Q3
-A3
-
-
+Return the output as a list of Q&A pairs like:
+Q: ...
+A: ...
 """
     response = client.chat.completions.create(
         model="gpt-4o",
@@ -84,17 +76,10 @@ Based on the following content, generate {target_count} relevant and useful Freq
 {joined_chunks}
 ---
 
-Return the output as a numbered list in the following format:
-Q1
-A1
+Return the output as:
+Q: ...
+A: ...
 
-Q2
-A2
-
-Q3
-A3
-
-...
 
 """
     response = client.chat.completions.create(
@@ -106,16 +91,15 @@ A3
 
 
 def parse_faq_text(faq_text):
-    pattern = r"Q\d+\s*(.+?)\s*A\d+\s*(.+?)(?=\nQ\d+|\Z)"
+    pattern = r"Q:\s*(.+?)\s*A:\s*(.+?)(?=\nQ:|\Z)"
     matches = re.findall(pattern, faq_text, re.DOTALL)
     faqs = []
-    for idx, (q, a) in enumerate(matches, start=1):
+    for q, a in matches:
         faqs.append({
-            "question": f"Q{idx} {q.strip()}",
-            "answer": f"A{idx} {a.strip()}"
+            "question": q.strip(),
+            "answer": a.strip()
         })
     return faqs
-
 
 
 def categorize_faqs(faq_list, context_chunks):
@@ -144,7 +128,7 @@ Return only the category name in one or two words.
         )
         category = response.choices[0].message.content.strip()
         faq["ai_category_name"] = "product"
-    print(faq_list)
+
     return faq_list
 
 

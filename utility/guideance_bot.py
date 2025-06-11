@@ -15,7 +15,7 @@ client = OpenAI(api_key=openai_api_key)
 embedding_model = OpenAIEmbeddings(model="text-embedding-3-large")
 
 # FAISS vector store path
-faiss_path = r"/home/bramhesh_srivastav/Platform_DataScience/website_faiss_index"
+faiss_path = r"C:\Users\hp\Desktop\Platform_16-05-2025\Platform_DataScience\website_faiss_index"
 
 # MongoDB connection
 mongo_client = pymongo.MongoClient("mongodb://dev:N47309HxFWE2Ehc@35.209.224.122:27017")
@@ -43,96 +43,39 @@ def generate_guidance(content):
     prompt = f"""
 You are a company assistant bot designed to generate operational behavioral guidelines from provided content. Your task is to extract and clearly format all relevant behavioral restrictions, action instructions, scope limitations, redirection procedures, and communication standards as a numbered list.
 
-
-
 Formatting Rules:
-
-
-
-Organize the output into clear section titles, using the following categories (add or adjust as needed):
-
-
-
-Response Scope
-
-
-
-Prohibited Topics and Actions
-
-
-
-Redirection Procedures
-
-
-
-Communication Standards
-
+- Organize the output into clear section titles, using the following categories (add or adjust as needed):
+  - Response Scope
+  - Prohibited Topics and Actions
+  - Redirection Procedures
+  - Communication Standards
 
 Extraction Criteria:
-
-
-
-Extract and format only the guidelines that specify:
-
-
-
-Permitted response scope
-
-
-
-Prohibited topics/actions
-
-
-
-Required redirection procedures
-
-
-
-Communication standards
-
-
-
-
+- Extract and format only the guidelines that specify:
+  - Permitted response scope
+  - Prohibited topics/actions
+  - Required redirection procedures
+  - Communication standards
 
 Example Output Structure:
+**Response Scope**
+   - Only respond to queries directly related to [Company/Product Name].
+   - Do not answer questions unrelated to company offerings.
 
+**Prohibited Topics and Actions**
+   - Never discuss pricing or payments.
+   - Do not provide legal advice.
 
+**Redirection Procedures**
+   - Redirect billing questions to customer care.
+   - Forward legal inquiries to the company’s legal department.
 
-1. Response Scope
-
-  1.1 Only respond to queries directly related to [Company/Product Name].
-
-  1.2 Do not answer questions unrelated to company offerings.
-
-
-
-2. Prohibited Topics and Actions
-
-  2.1 Never discuss pricing or payments.
-
-  2.2 Do not provide legal advice.
-
-
-
-3. Redirection Procedures
-
-  3.1 Redirect billing questions to customer care.
-
-  3.2 Forward legal inquiries to the company’s legal department.
-
-
-
-4. Communication Standards
-
-  4.1 Maintain professional and respectful language.
-
-  4.2 Reference only official company documentation in responses.
-
-
+ **Communication Standards**
+   - Maintain professional and respectful language.
+   - Reference only official company documentation in responses.
 
 Your task:
-
-Whenever content is provided between "--- Content ---" {content} and "----------------", extract and format the operational behavioral guidelines in the Example Output Structure: above.  
+Whenever content is provided between "--- Content ---" {content} and "----------------", extract and format the operational behavioral guidelines in the Example Output Structure above.
 """
     response = client.chat.completions.create(
         model="gpt-4o",
@@ -141,7 +84,7 @@ Whenever content is provided between "--- Content ---" {content} and "----------
     )
     return response.choices[0].message.content
 
-# Parse structured guidance into a list of documents
+# Parse structured guidance into a list of documents with proper Markdown
 def parse_guidance(text, chatbot_id, version_id):
     sections = text.strip().split("\n\n")
     parsed = []
@@ -159,14 +102,19 @@ def parse_guidance(text, chatbot_id, version_id):
             continue
         title = lines[0].strip()
         explanation = "\n".join(lines[1:]).strip()
+
+        # Proper Markdown formatting
+        formatted_title = f"## {title}"  # Markdown H2 for titles
+        formatted_explanation = f"{explanation}"  # Regular Markdown content
+
         parsed.append({
             "chatbot_id": chatbot_oid,
             "version_id": version_oid,
-            "section_title": title,
-            "category_name" : "New",
-            "ai_category_name" : "Old",
-            "source_type" : "ai",
-            "description": explanation,
+            "section_title": formatted_title,
+            "category_name": "New",
+            "ai_category_name": "Old",
+            "source_type": "ai",
+            "description": formatted_explanation,
             "is_enabled": False
         })
     return parsed
