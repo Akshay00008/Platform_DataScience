@@ -15,7 +15,7 @@ client = OpenAI(api_key=openai_api_key)
 embedding_model = OpenAIEmbeddings(model="text-embedding-3-large")
 
 # FAISS vector store path
-faiss_path = r"/home/bramhesh_srivastav/Platform_DataScience/website_faiss_index"
+faiss_path = r"C:\Users\hp\Desktop\Platform_16-05-2025\Platform_DataScience\website_faiss_index"#/home/bramhesh_srivastav/Platform_DataScience/website_faiss_index"
 
 # MongoDB connection
 mongo_client = pymongo.MongoClient("mongodb://dev:N47309HxFWE2Ehc@35.209.224.122:27017")
@@ -41,28 +41,109 @@ def fetch_vector_content(query="overview", k=25):
 # Generate structured guidance using GPT-4o
 def generate_guidance(content):
     prompt = f"""
-You are a company assistant bot designed to generate behavioral guidelines from provided content. Create a clear, numbered list of operational rules in the following style:
+You are a company assistant bot designed to generate operational behavioral guidelines from provided content. Your task is to extract and clearly format all relevant behavioral restrictions, action instructions, scope limitations, redirection procedures, and communication standards as a numbered list.
 
-1. [Specific behavioral restriction]
-2. [Actionable instruction]
-3. [Scope limitation]
-4. [Communication standard]
 
---- Content ---
-{content}
-----------------
 
-**Extract and format guidelines that specify:**
-- Permitted response scope
-- Prohibited topics/actions
-- Required redirection procedures
-- Communication standards
+Formatting Rules:
 
-**Example Output Structure:**
-1. Only respond to queries directly related to [Company/Product Name]
-2. Never discuss pricing or payments - redirect billing questions to customer care
-3. Strictly reference official company documentation when answering
-4. Maintain professional language at all times
+
+
+Organize the output into clear section titles, using the following categories (add or adjust as needed):
+
+
+
+Response Scope
+
+
+
+Prohibited Topics and Actions
+
+
+
+Redirection Procedures
+
+
+
+Communication Standards
+
+
+
+For each section, use sub-numbering for each specific guideline.
+
+(e.g., 1.1, 1.2 under section 1; 2.1, 2.2 under section 2, etc.)
+
+
+
+Do not mix explanation numbers across sections. Each section’s guidelines must begin with its section number and sub-number (e.g., 1.1, 2.1, 3.1…).
+
+
+
+Extraction Criteria:
+
+
+
+Extract and format only the guidelines that specify:
+
+
+
+Permitted response scope
+
+
+
+Prohibited topics/actions
+
+
+
+Required redirection procedures
+
+
+
+Communication standards
+
+
+
+
+
+Example Output Structure:
+
+
+
+1. Response Scope
+
+  1.1 Only respond to queries directly related to [Company/Product Name].
+
+  1.2 Do not answer questions unrelated to company offerings.
+
+
+
+2. Prohibited Topics and Actions
+
+  2.1 Never discuss pricing or payments.
+
+  2.2 Do not provide legal advice.
+
+
+
+3. Redirection Procedures
+
+  3.1 Redirect billing questions to customer care.
+
+  3.2 Forward legal inquiries to the company’s legal department.
+
+
+
+4. Communication Standards
+
+  4.1 Maintain professional and respectful language.
+
+  4.2 Reference only official company documentation in responses.
+
+
+
+Your task:
+
+Whenever content is provided between "--- Content ---" {content} and "----------------", extract and format the operational behavioral guidelines in the structure above.  
 """
     response = client.chat.completions.create(
         model="gpt-4o",
