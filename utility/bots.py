@@ -24,13 +24,21 @@ db = mongo_client["ChatbotDB"]
 collection = db['faqs']
 
 # FAISS vectorstore path
-faiss_path = r"/home/bramhesh_srivastav/Platform_DataScience/faiss_index"
 
 
-def load_faiss_index():
+
+def load_faiss_index(vector):
     """
     This function loads the FAISS index fresh every time it is called.
+    
     """
+    if vector == 'faq' :
+        faiss_path = r"/home/bramhesh_srivastav/Platform_DataScience/faiss_index"
+    
+    elif vector == 'webiste' :
+        faiss_path = r"/home/bramhesh_srivastav/Platform_DataScience/website_faiss_index"
+
+
     return FAISS.load_local(faiss_path, embedding_model, allow_dangerous_deserialization=True)
 
 

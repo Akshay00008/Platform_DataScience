@@ -210,6 +210,7 @@ def vector_embeddings():
         bucket_name = data.get('bucket_name')
         chatbot_id = data.get('chatbot_id')
         version_id = data.get('version_id')
+        
 
 
         if not blob_names or not bucket_name:
@@ -286,6 +287,9 @@ def faqs_endpoint():
     version_id = data.get("version_id")
     top_k = data.get("top_k", 20)
     generated_faq_count = data.get("generated_faq_count", 50)
+    vector= data.get('target_vector')
+
+    bots.load_faiss_index(vector)
 
     if not query or not chatbot_id or not version_id:
         return jsonify({"error": "query, chatbot_id, and version_id are required"}), 400

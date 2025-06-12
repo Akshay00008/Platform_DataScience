@@ -98,48 +98,108 @@ def Personal_chatbot(converstation_history, prompt, languages, purpose, tone_and
 
     def retrieve(state: State):
         try:
+            # Load both FAISS indexes
             new_vector_store = FAISS.load_local("website_faiss_index", embeddings, allow_dangerous_deserialization=True)
+            new_vector_store_1 = FAISS.load_local("faiss_index", embeddings, allow_dangerous_deserialization=True)
+            
+            # Retrieve documents from both FAISS indices
             retrieved_docs = new_vector_store.similarity_search(state['question'])
-            return {"context": retrieved_docs}
+            retrieved_docs_2 = new_vector_store_1.similarity_search(state['question'])
+
+            # Combine results from both indices, ensuring no duplicates
+            combined_docs = list(set(retrieved_docs + retrieved_docs_2))  # Use set to avoid duplicates
+            
+            return {"context": combined_docs}
+    
         except Exception as e:
             logger.error(f"Error in document retrieval: {e}")
             return {"context": []}
 
     def generate(state: State):
         try:
-     
             docs_content = "\n\n".join(doc.page_content for doc in state["context"])
             messages = [
                 SystemMessage(
                     f"""
-Role: You are a personal chatbot with the following purpose: {purpose}.
-You can communicate fluently in the following languages: {languages}.
-When the user greets you, start with: "{greeting}", and then introduce your purpose.
-Always keep the conversation context in mind, including the chat history:
-{converstation_history}
-You also have access to context derived from document scores:
-{docs_content}
-Maintain a tone and style that aligns with the following guidelines:
-{tone_and_style}
-Please reply as "Would like to connect you to the live agent  for the following guidelines :
-{guidelines}
-"""
+    Role: You are a personal chatbot with the following purpose: {purpose}.
+    You can communicate fluently in the following languages: {languages}.
+    When the user greets you, start with: "{greeting}", and then introduce your purpose.
+    Always keep the conversation context in mind, including the chat history:
+    {converstation_history}
+    You also have access to context derived from document scores:
+    {docs_content}
+    Maintain a tone and style that aligns with the following guidelines:
+    {tone_and_style}
+    Please reply as "Would like to connect you to the live agent for the following guidelines :
+    {guidelines}
+    """
                 ),
                 HumanMessage(f"{state['question']}")
             ]
             response = llm.invoke(messages)
-            return {"answer": response.content, 
-                    }
+            return {"answer": response.content}
+        
         except Exception as e:
             logger.error(f"Error in LLM generation: {e}")
             return {"answer": "Sorry, something went wrong in generating a response."}
 
-    try:
-        graph_builder = StateGraph(State).add_sequence([retrieve, generate])
-        graph_builder.add_edge(START, "retrieve")
-        graph = graph_builder.compile()
-        response = graph.invoke({"question": prompt})
-        return response.get('answer', "No response generated.")
-    except Exception as e:
-        logger.error(f"Error in conversation graph: {e}")
-        return f"An error occurred during conversation: {e}"
+            try:
+                graph_builder = StateGraph(State).add_sequence([retrieve, generate])
+                graph_builder.add_edge(START, "retrieve")
+                graph = graph_builder.compile()
+                response = graph.invoke({"question": prompt})
+                return response.get('answer', "No response generated.")
+            except Exception as e:
+                logger.error(f"Error in conversation graph: {e}")
+                return f"An error occurred during conversation: {e}"
+
+
+#     def retrieve(state: State):
+#         try:
+#             new_vector_store = FAISS.load_local("website_faiss_index", embeddings, allow_dangerous_deserialization=True)
+#             new_vector_store_1=FAISS.load_local("faiss_index", embeddings, allow_dangerous_deserialization=True)
+#             retrieved_docs = new_vector_store.similarity_search(state['question'])
+#             retrieved_docs_2 = new_vector_store_1.similarity_search(state['question'])
+#             return {"context": (retrieved_docs)}
+#         except Exception as e:
+#             logger.error(f"Error in document retrieval: {e}")
+#             return {"context": []}
+
+#     def generate(state: State):
+#         try:
+     
+#             docs_content = "\n\n".join(doc.page_content for doc in state["context"])
+#             messages = [
+#                 SystemMessage(
+#                     f"""
+# Role: You are a personal chatbot with the following purpose: {purpose}.
+# You can communicate fluently in the following languages: {languages}.
+# When the user greets you, start with: "{greeting}", and then introduce your purpose.
+# Always keep the conversation context in mind, including the chat history:
+# {converstation_history}
+# You also have access to context derived from document scores:
+# {docs_content}
+# Maintain a tone and style that aligns with the following guidelines:
+# {tone_and_style}
+# Please reply as "Would like to connect you to the live agent  for the following guidelines :
+# {guidelines}
+# """
+#                 ),
+#                 HumanMessage(f"{state['question']}")
+#             ]
+#             response = llm.invoke(messages)
+#             return {"answer": response.content, 
+#                     }
+#         except Exception as e:
+#             logger.error(f"Error in LLM generation: {e}")
+#             return {"answer": "Sorry, something went wrong in generating a response."}
+
+#     try:
+#         graph_builder = StateGraph(State).add_sequence([retrieve, generate])
+#         graph_builder.add_edge(START, "retrieve")
+#         graph = graph_builder.compile()
+#         response = graph.invoke({"question": prompt})
+#         return response.get('answer', "No response generated.")
+#     except Exception as e:
+#         logger.error(f"Error in conversation graph: {e}")
+#         return f"An error occurred during conversation: {e}"
