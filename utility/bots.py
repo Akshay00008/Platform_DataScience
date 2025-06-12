@@ -24,7 +24,9 @@ db = mongo_client["ChatbotDB"]
 collection = db['faqs']
 
 # FAISS vectorstore path
+faiss_path_1 = r"/home/bramhesh_srivastav/Platform_DataScience/faiss_index"
 
+faiss_path_2 = r"/home/bramhesh_srivastav/Platform_DataScience/website_faiss_index"
 
 
 def load_faiss_index(vector):
@@ -33,10 +35,12 @@ def load_faiss_index(vector):
     
     """
     if vector == 'faq' :
-        faiss_path = r"/home/bramhesh_srivastav/Platform_DataScience/faiss_index"
+        faiss_path = faiss_path_1
     
     elif vector == 'webiste' :
-        faiss_path = r"/home/bramhesh_srivastav/Platform_DataScience/website_faiss_index"
+        faiss_path = faiss_path_2
+
+        
 
 
     return FAISS.load_local(faiss_path, embedding_model, allow_dangerous_deserialization=True)
