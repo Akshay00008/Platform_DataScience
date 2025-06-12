@@ -75,7 +75,7 @@ Example Output Structure:
    - Reference only official company documentation in responses.
 
 Your task:
-Whenever content is provided between "--- Content ---" {content} and "----------------", extract and format the operational behavioral guidelines in the Example Output Structure above.
+Whenever content is provided between "--- Content ---" {content} and "----------------", extract and format the operational behavioral guidelines as it is in the Example Output Structure above.
 """
     response = client.chat.completions.create(
         model="gpt-4o",

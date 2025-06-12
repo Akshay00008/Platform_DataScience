@@ -41,6 +41,7 @@ except Exception as e:
 def read_pdf_from_gcs(bucket_name, blob_names):
     """Read PDFs from GCS and extract text with error handling"""
     complete_document = []
+    print(blob_names)
     for blob_name in blob_names:
         try:
             logger.info(f"Processing blob: {blob_name}")
@@ -55,8 +56,10 @@ def read_pdf_from_gcs(bucket_name, blob_names):
             for page_num, page in enumerate(pdf_reader.pages):
                 text = page.extract_text()
                 if text:
+                    print("58")
                     data.append(text)
                 else:
+                    print("No text extracted from page {page_num} in blob {blob_name}")
                     logger.warning(f"No text extracted from page {page_num} in blob {blob_name}")
             pdf = '. '.join(data)
 
@@ -65,16 +68,21 @@ def read_pdf_from_gcs(bucket_name, blob_names):
                 docs = text_splitter.create_documents([pdf])
                 complete_document.append(docs)
             except Exception as e:
+                print("Error during text splitting for {blob_name}: {e}")
                 logger.error(f"Error during text splitting for {blob_name}: {e}")
 
         except Exception as e:
-            logger.error(f"Error processing blob {blob_name}: {e}")
 
+            logger.error(f"Error processing blob {blob_name}: {e}")
+    print(chain.from_iterable(complete_document))
     return list(chain.from_iterable(complete_document))
+
+
 
 def embeddings_from_gcb(bucket_name, blob_names):
     try:
         docs = read_pdf_from_gcs(bucket_name, blob_names)
+        print(docs)
         if not docs:
             logger.warning("No documents were extracted from the PDFs.")
             return "No documents extracted."
