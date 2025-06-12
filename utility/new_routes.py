@@ -289,14 +289,16 @@ def faqs_endpoint():
     generated_faq_count = data.get("generated_faq_count", 50)
     vector= data.get('target_vector')
 
-    bots.load_faiss_index(vector)
+    faisll_load=bots.load_faiss_index(vector)
+    print(faisll_load)
+    
 
     if not query or not chatbot_id or not version_id:
         return jsonify({"error": "query, chatbot_id, and version_id are required"}), 400
 
     try:
-        top_chunks = bots.search_faiss(query, k=top_k)
-
+        top_chunks = bots.search_faiss(query,faisll_load, k=top_k)
+        print("*****5555555")
         extracted_faq_text = bots.extract_existing_faqs(top_chunks)
         extracted_faqs = bots.parse_faq_text(extracted_faq_text)
         inserted_existing_count = bots.save_faqs_to_mongo(extracted_faqs, chatbot_id, version_id)

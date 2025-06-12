@@ -23,10 +23,10 @@ mongo_client = pymongo.MongoClient("mongodb://dev:N47309HxFWE2Ehc@35.209.224.122
 db = mongo_client["ChatbotDB"]
 collection = db['faqs']
 
-faiss_path_1 = r"/home/bramhesh_srivastav/Platform_DataScience/faiss_index"
-faiss_path_2 = r"/home/bramhesh_srivastav/Platform_DataScience/website_faiss_index"
+faiss_path_1 = r"C:\\Users\\hp\\Desktop\\Platform_16-05-2025\\Platform_DataScience\\faiss_index"#"/home/bramhesh_srivastav/Platform_DataScience/faiss_index"
+faiss_path_2 = r"C:\Users\hp\Desktop\Platform_16-05-2025\Platform_DataScience\website_faiss_index"#"/home/bramhesh_srivastav/Platform_DataScience/website_faiss_index"
 
-def load_faiss_index(vector):
+def load_faiss_index(target_vector):
     """
     This function loads the FAISS index fresh every time it is called.
     
@@ -39,9 +39,9 @@ def load_faiss_index(vector):
     """
     try:
         # Define the FAISS index path based on the vector type
-        if vector == 'faq':
-            faiss_path = faiss_path_1
-        elif vector == 'website':
+        if 'faq' in target_vector:
+                faiss_path = faiss_path_1
+        elif 'website' in target_vector:
             faiss_path = faiss_path_2
         else:
             raise ValueError("Invalid vector type. Please use 'faq' or 'website'.")
@@ -50,17 +50,20 @@ def load_faiss_index(vector):
         return FAISS.load_local(faiss_path, embedding_model, allow_dangerous_deserialization=True)
     
     except Exception as e:
-        logger.error(f"Error loading FAISS index: {e}")
-        return None
+        return (f"Error loading FAISS index: {e}")
+        
 
 
 
-def search_faiss(query, k=10):
+
+
+
+def search_faiss(query,faisll_load, k=10):
     """
     Perform similarity search on the FAISS index and return results.
     This ensures fresh loading of the FAISS index on each search request.
     """
-    vectorstore = load_faiss_index()  # Reload FAISS index on each request
+    vectorstore = faisll_load  # Reload FAISS index on each request
     results = vectorstore.similarity_search(query, k=k)
     return [doc.page_content for doc in results]
 
