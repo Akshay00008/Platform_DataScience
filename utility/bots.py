@@ -23,27 +23,36 @@ mongo_client = pymongo.MongoClient("mongodb://dev:N47309HxFWE2Ehc@35.209.224.122
 db = mongo_client["ChatbotDB"]
 collection = db['faqs']
 
-# FAISS vectorstore path
 faiss_path_1 = r"/home/bramhesh_srivastav/Platform_DataScience/faiss_index"
-
 faiss_path_2 = r"/home/bramhesh_srivastav/Platform_DataScience/website_faiss_index"
 
-
-def load_faiss_index(vector):
+def load_faiss_index(vector, embedding_model):
     """
     This function loads the FAISS index fresh every time it is called.
     
+    Parameters:
+        vector (str): The type of vector ('faq' or 'website') to determine which FAISS index to load.
+        embedding_model: The model used for embeddings, passed as an argument.
+
+    Returns:
+        FAISS index: Loaded FAISS index for the corresponding vector type.
     """
-    if vector == 'faq' :
-        faiss_path = faiss_path_1
+    try:
+        # Define the FAISS index path based on the vector type
+        if vector == 'faq':
+            faiss_path = faiss_path_1
+        elif vector == 'website':
+            faiss_path = faiss_path_2
+        else:
+            raise ValueError("Invalid vector type. Please use 'faq' or 'website'.")
+
+        # Load and return the FAISS index
+        return FAISS.load_local(faiss_path, embedding_model, allow_dangerous_deserialization=True)
     
-    elif vector == 'webiste' :
-        faiss_path = faiss_path_2
+    except Exception as e:
+        logger.error(f"Error loading FAISS index: {e}")
+        return None
 
-        
-
-
-    return FAISS.load_local(faiss_path, embedding_model, allow_dangerous_deserialization=True)
 
 
 def search_faiss(query, k=10):
