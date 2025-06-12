@@ -8,7 +8,7 @@ from .On_boarding import chatbot
 from utility.web_Scrapper import crawl_website
 from Databases.mongo import Bot_Retrieval,website_tag_saving
 from embeddings_creator import embeddings_from_gcb, embeddings_from_website_content
-# from utility.Files_upload_description import files_upload_description
+from utility.Files_upload_description import description_from_gcs
 from Youtube_extractor import extract_and_store_descriptions
 from utility.website_tag_generator import new_generate_tags_from_gpt
 from utility.logger_file import Logs
@@ -75,7 +75,15 @@ def mark_thread_done():
         if active_threads == 0:
             loggs.Logging("✅ All background tasks completed. Status: completed")
 
+def bucket_files(bucket_name, blob_names,chatbot_id,version_id):
+    """Main function to run the process"""
+    # bucket_name = "pt-product-1"  # Replace with your GCS bucket name
+    # blob_names = ["TYTAN DATA SHEET.pdf"]  # Replace with the list of blob names (PDFs) you want to process
 
+    # Call the function to process PDFs from GCS and get documents
+    result = description_from_gcs(bucket_name, blob_names,chatbot_id,version_id)
+    
+    return {"Success " : "Descrittion, Keywords and Tags generated "}
 
 def process_scraping(url, chatbot_id, version_id): 
     try:
@@ -200,6 +208,9 @@ def vector_embeddings():
         data = request.get_json()
         blob_names = data.get('blob_names')
         bucket_name = data.get('bucket_name')
+        chatbot_id = data.get('chatbot_id')
+        version_id = data.get('version_id')
+
 
         if not blob_names or not bucket_name:
             return jsonify({"error": "Missing blob_names or bucket_name"}), 400
@@ -207,7 +218,7 @@ def vector_embeddings():
         with lock:
             active_threads += 1
         Thread(target=background_embedding_task, args=(bucket_name, blob_names)).start()
-        # Thread(target=files_upload_description,args=(bucket_name, blob_names)).start()
+        Thread(target=bucket_files,args=(bucket_name, blob_names,chatbot_id,version_id)).start()
         # result=files_upload_description(bucket_name, blob_names)
         # print(result)
         loggs.Logging(f"✅ Embedding job started for bucket: {bucket_name}")

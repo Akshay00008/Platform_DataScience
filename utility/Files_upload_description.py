@@ -7,10 +7,16 @@ import logging
 from itertools import chain
 from langchain.text_splitter import CharacterTextSplitter
 from dotenv import load_dotenv  # Import the dotenv module
+import pymongo
 
 # Setup logging
 logger = logging.getLogger(__name__)
 logging.basicConfig(level=logging.INFO)
+
+# MongoDB setup
+mongo_client = pymongo.MongoClient("mongodb://dev:N47309HxFWE2Ehc@35.209.224.122:27017")
+db = mongo_client["ChatbotDB"]
+collection = db['files']
 
 # Load environment variables from .env file
 load_dotenv()  # This will load the .env file in your project directory
@@ -59,7 +65,12 @@ def generate_openai_output(text):
     return content
 
 # Function to read PDFs from GCS and extract text
-def read_pdf_from_gcs(bucket_name, blob_names):
+# MongoDB setup
+mongo_client = pymongo.MongoClient("mongodb://dev:N47309HxFWE2Ehc@35.209.224.122:27017")
+db = mongo_client["ChatbotDB"]
+collection = db['files']
+
+def read_pdf_from_gcs(bucket_name, blob_names, chatbot_id, version_id):
     """Read PDFs from GCS and extract text with error handling"""
     complete_document = []
     print(f"Processing the following blobs: {blob_names}")
@@ -87,11 +98,11 @@ def read_pdf_from_gcs(bucket_name, blob_names):
             pdf_text = '. '.join(data)
 
             # Generate Description, Keywords, and Tags using OpenAI
-            file_des= generate_openai_output(pdf_text)
+            file_des = generate_openai_output(pdf_text)
 
-            description= file_des.get('description')
-            keywords=file_des.get('keywords')
-            tags=file_des.get('tags')
+            description = file_des.get('description', 'No description')
+            keywords = file_des.get('keywords', [])
+            tags = file_des.get('tags', [])
 
             # Print the generated description, keywords, and tags
             print(f"Generated description for {blob_name}: {description}")
@@ -102,6 +113,20 @@ def read_pdf_from_gcs(bucket_name, blob_names):
             logger.info(f"Generated keywords: {keywords}")
             logger.info(f"Generated tags: {tags}")
 
+            # Update MongoDB collection with description, keywords, and tags
+            collection.update_one(
+                {"chatbot_id": chatbot_id, "version_id": version_id, "display_name": blob_name},
+                {
+                    "$set": {
+                        "description": description,
+                        "keywords": keywords,
+                        "tags": tags
+                    }
+                },
+                upsert=True  # Create a new document if no match is found
+            )
+            logger.info(f"MongoDB updated for blob: {blob_name}")
+
         except Exception as e:
             logger.error(f"Error processing blob {blob_name}: {e}")
     
@@ -110,10 +135,10 @@ def read_pdf_from_gcs(bucket_name, blob_names):
     return flattened_docs
 
 # Function to process each file content
-def embeddings_from_gcs(bucket_name, blob_names):
+def description_from_gcs(bucket_name, blob_names,chatbot_id,version_id):
     """Load PDF documents from GCS and return them as documents"""
     try:
-        docs = read_pdf_from_gcs(bucket_name, blob_names)
+        docs = read_pdf_from_gcs(bucket_name, blob_names,chatbot_id,version_id)
         if not docs:
             logger.warning("No documents were extracted from the PDFs.")
             return "No documents extracted."
@@ -126,19 +151,6 @@ def embeddings_from_gcs(bucket_name, blob_names):
         return f"Error processing GCS files: {e}"
 
 # Main function to run the process
-def main():
-    """Main function to run the process"""
-    bucket_name = "pt-product-1"  # Replace with your GCS bucket name
-    blob_names = ["TYTAN DATA SHEET.pdf"]  # Replace with the list of blob names (PDFs) you want to process
+ # Print the extracted documents
 
-    # Call the function to process PDFs from GCS and get documents
-    result = embeddings_from_gcs(bucket_name, blob_names)
-    
-    if isinstance(result, str):
-        print(result)  # If the result is a message (e.g., error or warning), print it
-    else:
-        print("Documents extracted successfully:")
-        print(result)  # Print the extracted documents
 
-if __name__ == "__main__":
-    main()
