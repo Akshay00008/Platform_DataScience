@@ -8,7 +8,7 @@ from .On_boarding import chatbot
 from utility.web_Scrapper import crawl_website
 from Databases.mongo import Bot_Retrieval,website_tag_saving
 from embeddings_creator import embeddings_from_gcb, embeddings_from_website_content
-from utility.Files_upload_description import files_upload_description
+# from utility.Files_upload_description import files_upload_description
 from Youtube_extractor import extract_and_store_descriptions
 from utility.website_tag_generator import new_generate_tags_from_gpt
 from utility.logger_file import Logs
