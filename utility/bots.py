@@ -26,7 +26,7 @@ collection = db['faqs']
 faiss_path_1 = r"/home/bramhesh_srivastav/Platform_DataScience/faiss_index"
 faiss_path_2 = r"/home/bramhesh_srivastav/Platform_DataScience/website_faiss_index"
 
-def load_faiss_index(vector, embedding_model):
+def load_faiss_index(vector):
     """
     This function loads the FAISS index fresh every time it is called.
     
