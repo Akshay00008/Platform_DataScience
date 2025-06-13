@@ -23,10 +23,13 @@ mongo_client = pymongo.MongoClient("mongodb://dev:N47309HxFWE2Ehc@35.209.224.122
 db = mongo_client["ChatbotDB"]
 collection = db['faqs']
 
-faiss_path_1 = r"/home/bramhesh_srivastav/Platform_DataScience/faiss_index"#C:\\Users\\hp\\Desktop\\Platform_16-05-2025\\Platform_DataScience\\faiss_index"#"/home/bramhesh_srivastav/Platform_DataScience/faiss_index"
-faiss_path_2 = r"/home/bramhesh_srivastav/Platform_DataScience/website_faiss_index"#"C:\Users\hp\Desktop\Platform_16-05-2025\Platform_DataScience\website_faiss_index"#"/home/bramhesh_srivastav/Platform_DataScience/website_faiss_index"
+# faiss_path_1 = r"/home/bramhesh_srivastav/Platform_DataScience/faiss_index"#C:\\Users\\hp\\Desktop\\Platform_16-05-2025\\Platform_DataScience\\faiss_index"#"/home/bramhesh_srivastav/Platform_DataScience/faiss_index"
+# faiss_path_2 = r"/home/bramhesh_srivastav/Platform_DataScience/website_faiss_index"#"C:\Users\hp\Desktop\Platform_16-05-2025\Platform_DataScience\website_faiss_index"#"/home/bramhesh_srivastav/Platform_DataScience/website_faiss_index"
 
 def load_faiss_index(target_vector):
+
+    faiss_path_1 = r"/home/bramhesh_srivastav/Platform_DataScience/faiss_index"#C:\\Users\\hp\\Desktop\\Platform_16-05-2025\\Platform_DataScience\\faiss_index"#"/home/bramhesh_srivastav/Platform_DataScience/faiss_index"
+    faiss_path_2 = r"/home/bramhesh_srivastav/Platform_DataScience/website_faiss_index"#"C:\Users\hp\Desktop\Platform_16-05-2025\Platform_DataScience\website_faiss_index"#"/home/bramhesh_srivastav/Platform_DataScience/website_faiss_index"
     """
     This function loads the FAISS index fresh every time it is called.
     
