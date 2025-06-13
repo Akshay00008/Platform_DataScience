@@ -59,7 +59,7 @@ Generate a set of clear and concise guidelines for when the chatbot should hand 
 Context:
 {context}
 
-Provide output in structured guidance points with section titles.
+Provide output in structured guidance points with section titles donot include ### or numbers any where please.
 """
 
     response = client.chat.completions.create(

@@ -112,6 +112,7 @@ def embeddings_from_gcb(bucket_name, blob_names):
                 return f"Error creating FAISS index: {e}"
 
         try:
+            print("115")
             vector_store.add_documents(documents=docs)
             vector_store.save_local("faiss_index")
             logger.info("Documents added and index saved successfully.")
