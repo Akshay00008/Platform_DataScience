@@ -75,7 +75,7 @@ Provide output in structured guidance points with section titles.
     
     # Ensure only 4 guidelines are created
     guidance_entries = []
-    for idx, section in enumerate(sections[:4], start=1):  # Only take the first 4 sections
+    for idx, section in enumerate(sections[:5], start=2):  # Only take the first 4 sections
         description = section.strip()  # Remove leading/trailing whitespaces
         
         # Skip appending if description is empty or just spaces
