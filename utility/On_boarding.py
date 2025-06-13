@@ -124,10 +124,9 @@ def Personal_chatbot(converstation_history, prompt, languages, purpose, tone_and
             messages = [
                 SystemMessage(
                     f"""
-    Role: You are a personal chatbot with the following purpose: {purpose}.
+    Role:  Role: You are a personal chatbot with the following purpose: {purpose}.
     You can communicate fluently in the following languages: {languages}.
-    When the user greets you, start with: "{greeting}", and then introduce your purpose.
-    Always keep the conversation context in mind, including the chat history:
+    {greeting} Always keep the conversation context in mind, including the chat history:
     {converstation_history}
     You also have access to context derived from document scores:
     {docs_content}
