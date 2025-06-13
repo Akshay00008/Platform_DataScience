@@ -5,7 +5,7 @@ from langchain.chat_models import init_chat_model
 from langchain_core.messages import HumanMessage, SystemMessage
 from dotenv import load_dotenv
 from embeddings_creator import embeddings_from_gcb
-import os 
+import os
 from langgraph.graph import START, StateGraph
 from langchain_core.documents import Document
 from langchain_community.vectorstores import FAISS
@@ -18,7 +18,6 @@ from utility.retrain_bot import fetch_data
 logging.basicConfig(level=logging.INFO)
 logging.disable()
 logger = logging.getLogger(__name__)
-
 
 try:
     if not os.environ.get("OPENAI_API_KEY"):
@@ -54,16 +53,15 @@ converstation_state = {}
 
 def chatbot(chatbot_id, version_id, prompt, user_id):
     try:
-
         request_body = {
         "chatbot_id": chatbot_id,
         "version_id": version_id,
         "collection_name": ["guidance", "handoff"]
         }
 
-
         guidelines = fetch_data(request_body)
-        print("Guidelines generated succefull")
+        print("Guidelines generated successfully")
+        
         Bot_information = Bot_Retrieval(chatbot_id, version_id)
         if not Bot_information:
             raise ValueError(f"No bot information found for chatbot_id {chatbot_id} and version_id {version_id}")
@@ -78,19 +76,24 @@ def chatbot(chatbot_id, version_id, prompt, user_id):
         purpose = Bot_information[0].get('purpose', "General assistance")
         languages = Bot_information[0].get('supported_languages', ["English"])
         tone_and_style = Bot_information[0].get('tone_style', "Friendly and professional")
-        print("receive bot info")
-        llm_response = Personal_chatbot(converstation_history, prompt, languages, purpose, tone_and_style, greeting,guidelines)
+        print("Received bot info")
+
+        # Avoid adding empty guidelines to the response
+        if guidelines.get('guidanceflows') or guidelines.get('handoffscenarios'):
+            llm_response = Personal_chatbot(converstation_history, prompt, languages, purpose, tone_and_style, greeting, guidelines)
+        else:
+            llm_response = Personal_chatbot(converstation_history, prompt, languages, purpose, tone_and_style, greeting, None)
+
         converstation_state[user_id].append({'role': 'bot', 'content': llm_response})
 
         return llm_response
 
     except Exception as e:
         logger.error(f"Error in chatbot function: {e}")
-        print("Error in chatbot function: {e}")
-        print(e)
+        print(f"Error in chatbot function: {e}")
         return f"An error occurred: {e}"
 
-def Personal_chatbot(converstation_history, prompt, languages, purpose, tone_and_style, greeting,guidelines):
+def Personal_chatbot(converstation_history, prompt, languages, purpose, tone_and_style, greeting, guidelines):
     class State(TypedDict):
         question: str
         context: List[Document]
@@ -130,8 +133,6 @@ def Personal_chatbot(converstation_history, prompt, languages, purpose, tone_and
     {docs_content}
     Maintain a tone and style that aligns with the following guidelines:
     {tone_and_style}
-    Please reply as "Would like to connect you to the live agent for the following guidelines :
-    {guidelines}
     """
                 ),
                 HumanMessage(f"{state['question']}")
@@ -147,11 +148,14 @@ def Personal_chatbot(converstation_history, prompt, languages, purpose, tone_and
         graph_builder = StateGraph(State).add_sequence([retrieve, generate])
         graph_builder.add_edge(START, "retrieve")
         graph = graph_builder.compile()
+
         response = graph.invoke({"question": prompt})
+
         return response.get('answer', "No response generated.")
     except Exception as e:
         logger.error(f"Error in conversation graph: {e}")
         return f"An error occurred during conversation: {e}"
+
 
 
 #     def retrieve(state: State):
