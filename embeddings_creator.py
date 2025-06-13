@@ -83,6 +83,8 @@ def embeddings_from_gcb(bucket_name, blob_names):
     try:
         docs = read_pdf_from_gcs(bucket_name, blob_names)
         print(docs)
+        print(bucket_name)
+        print(blob_names)
         if not docs:
             logger.warning("No documents were extracted from the PDFs.")
             return "No documents extracted."
