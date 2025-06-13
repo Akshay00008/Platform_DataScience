@@ -217,7 +217,7 @@ def vector_embeddings():
             return jsonify({"error": "Missing blob_names or bucket_name"}), 400
 
         with lock:
-            active_threads += 2
+            active_threads += 1
         Thread(target=background_embedding_task, args=(bucket_name, blob_names)).start()
         Thread(target=bucket_files,args=(bucket_name, blob_names,chatbot_id,version_id)).start()
         # result=files_upload_description(bucket_name, blob_names)
