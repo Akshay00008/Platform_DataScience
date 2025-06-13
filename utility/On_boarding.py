@@ -143,15 +143,15 @@ def Personal_chatbot(converstation_history, prompt, languages, purpose, tone_and
             logger.error(f"Error in LLM generation: {e}")
             return {"answer": "Sorry, something went wrong in generating a response."}
 
-            try:
-                graph_builder = StateGraph(State).add_sequence([retrieve, generate])
-                graph_builder.add_edge(START, "retrieve")
-                graph = graph_builder.compile()
-                response = graph.invoke({"question": prompt})
-                return response.get('answer', "No response generated.")
-            except Exception as e:
-                logger.error(f"Error in conversation graph: {e}")
-                return f"An error occurred during conversation: {e}"
+    try:
+        graph_builder = StateGraph(State).add_sequence([retrieve, generate])
+        graph_builder.add_edge(START, "retrieve")
+        graph = graph_builder.compile()
+        response = graph.invoke({"question": prompt})
+        return response.get('answer', "No response generated.")
+    except Exception as e:
+        logger.error(f"Error in conversation graph: {e}")
+        return f"An error occurred during conversation: {e}"
 
 
 #     def retrieve(state: State):
