@@ -75,7 +75,7 @@ Redirection Procedures
    - Reference only official company documentation in responses.
 
 Your task:
-Whenever content is provided between "--- Content ---" {content} and "----------------", extract and format the operational behavioral guidelines as it is in the Example Output Structure above donot include numbering in your response numbering is strictly prohobitted.
+Whenever content is provided between "--- Content ---" {content} and "----------------", extract and format the operational behavioral guidelines as it is in the Example Output Structure above donot include numbering in your response numbering is strictly prohobitted also donot use hastags like this simple text ## Response Scope.
 """
     response = client.chat.completions.create(
         model="gpt-4o",
