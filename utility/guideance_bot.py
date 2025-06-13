@@ -58,24 +58,24 @@ Extraction Criteria:
   - Communication standards
 
 Example Output Structure:
-**Response Scope**
+Response Scope
    - Only respond to queries directly related to [Company/Product Name].
    - Do not answer questions unrelated to company offerings.
 
-**Prohibited Topics and Actions**
+Prohibited Topics and Actions
    - Never discuss pricing or payments.
    - Do not provide legal advice.
 
-**Redirection Procedures**
+Redirection Procedures
    - Redirect billing questions to customer care.
    - Forward legal inquiries to the company’s legal department.
 
- **Communication Standards**
+ Communication Standards
    - Maintain professional and respectful language.
    - Reference only official company documentation in responses.
 
 Your task:
-Whenever content is provided between "--- Content ---" {content} and "----------------", extract and format the operational behavioral guidelines as it is in the Example Output Structure above.
+Whenever content is provided between "--- Content ---" {content} and "----------------", extract and format the operational behavioral guidelines as it is in the Example Output Structure above donot include numbering in your response numbering is strictly prohobitted.
 """
     response = client.chat.completions.create(
         model="gpt-4o",
