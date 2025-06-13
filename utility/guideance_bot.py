@@ -41,90 +41,41 @@ def fetch_vector_content(query="overview", k=25):
 # Generate structured guidance using GPT-4o
 def generate_guidance(content):
     prompt = f"""
-You are a company assistant bot designed to extract operational behavioral guidelines from provided content. When content is delimited by "--- Content ---" and "----------------", perform the following:
+You are a company assistant bot designed to generate operational behavioral guidelines from provided content. Your task is to extract and clearly format all relevant behavioral restrictions, action instructions, scope limitations, redirection procedures, and communication standards as a numbered list.
 
+Formatting Rules:
+- Organize the output into clear section titles, using the following categories (add or adjust as needed):
+  - Response Scope
+  - Prohibited Topics and Actions
+  - Redirection Procedures
+  - Communication Standards
+
+Extraction Criteria:
+- Extract and format only the guidelines that specify:
+  - Permitted response scope
+  - Prohibited topics/actions
+  - Required redirection procedures
+  - Communication standards
+
+Example Output Structure:
 Response Scope
-
-Extract only guidelines related to: permitted response scope, prohibited topics/actions, redirection procedures, or communication standards
-
-Restrict output to these four categories:
-
-Response Scope
+   - Only respond to queries directly related to [Company/Product Name].
+   - Do not answer questions unrelated to company offerings.
 
 Prohibited Topics and Actions
+   - Never discuss pricing or payments.
+   - Do not provide legal advice.
 
 Redirection Procedures
+   - Redirect billing questions to customer care.
+   - Forward legal inquiries to the company’s legal department.
 
-Communication Standards
+ Communication Standards
+   - Maintain professional and respectful language.
+   - Reference only official company documentation in responses.
 
-Omit any category entirely if no relevant guidelines exist in the source content
-
-Prohibited Topics and Actions
-
-Never use numbers, bullet points, or lists in your output
-
-Avoid all special formatting (hashtags, markdown, bold/italics)
-
-Do not add, interpret, or summarize guidelines
-
-Refrain from including examples or explanatory text
-
-Redirection Procedures
-
-If source content lacks redirection protocols, omit the "Redirection Procedures" section entirely
-
-Never create placeholder text for missing sections
-
-Communication Standards
-
-Use exact section headers:
-Response Scope
-Prohibited Topics and Actions
-Redirection Procedures
-Communication Standards
-
-Format guidelines as simple line items under each header
-
-Replicate phrasing verbatim from source content
-
-Maintain neutral, professional language
-
-If no guidelines exist for a category, exclude that header entirely
-
-Final Output Rules
-
-Strictly follow the header sequence above
-
-Never include section numbers or nested lists
-
-Output only the four specified sections with their verbatim guidelines
-
-If no relevant content exists across all categories, return: "No operational guidelines detected"
-
-Example Execution
-Input:
---- Content ---
-Assistants must redirect payment inquiries to finance@company.com. Never discuss future product releases. Use only approved response templates.
-
-Output:
-Response Scope
-
-- Only respond to queries directly related to [Company/Product Name].
-- Do not answer questions unrelated to company offerings.
-
-Prohibited Topics and Actions
-
-Never discuss future product releases
-
-Redirection Procedures
-
-Redirect payment inquiries to finance@company.com
-
-Communication Standards
-
-Use only approved response templates
-
-
+Your task:
+Whenever content is provided between "--- Content ---" {content} and "----------------", extract and format the operational behavioral guidelines as it is in the Example Output Structure above donot include numbering in your response numbering is strictly prohobitted also donot use hastags like this simple text ## Response Scope.
 """
     response = client.chat.completions.create(
         model="gpt-4o",
@@ -153,7 +104,7 @@ def parse_guidance(text, chatbot_id, version_id):
         explanation = "\n".join(lines[1:]).strip()
 
         # Proper Markdown formatting
-        formatted_title = f"## {title}"  # Markdown H2 for titles
+        formatted_title = f"{title}"  # Markdown H2 for titles
         formatted_explanation = f"{explanation}"  # Regular Markdown content
 
         parsed.append({
