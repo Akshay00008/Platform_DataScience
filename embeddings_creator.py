@@ -94,7 +94,7 @@ def embeddings_from_gcb(bucket_name, blob_names):
                 try:
                     logger.info("Generating embeddings for the new documents...")
                     new_doc_embeddings = embeddings.embed_documents(docs)
-
+                    print("Embeddings made")
                     # Ensure the embeddings are numpy arrays (required by FAISS)
                     new_doc_embeddings = np.array(new_doc_embeddings)
                     logger.info(f"Generated embeddings for {len(docs)} new documents.")
