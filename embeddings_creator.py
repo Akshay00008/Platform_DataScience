@@ -13,11 +13,11 @@ from langchain_community.docstore.in_memory import InMemoryDocstore
 from langchain_community.vectorstores import FAISS
 import getpass
 from fastapi import FastAPI
-import logging
+from utility.logger_file import Logs
 import json
  
 app = FastAPI()
- 
+logger=Logs
  
 try:
  
