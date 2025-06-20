@@ -15,6 +15,7 @@ import getpass
 from fastapi import FastAPI
 from utility.logger_file import Logs
 import json
+import numpy as np
 from dotenv import load_dotenv
  
 app = FastAPI()
@@ -91,7 +92,11 @@ def embeddings_from_gcb(bucket_name, blob_names):
                 logger.info("Loaded existing FAISS index.")
                 result_message = "Used existing Faiss_index"
                 try:
+                    logger.info("Generating embeddings for the new documents...")
                     new_doc_embeddings = embeddings.embed_documents(docs)
+
+                    # Ensure the embeddings are numpy arrays (required by FAISS)
+                    new_doc_embeddings = np.array(new_doc_embeddings)
                     logger.info(f"Generated embeddings for {len(docs)} new documents.")
                     vector_store.add(new_doc_embeddings)
                     vector_store.save_local("faiss_index")
