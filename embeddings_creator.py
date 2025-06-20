@@ -1,5 +1,7 @@
+from typing import List
 from google.cloud import storage
 import os
+from langchain_core.documents import Document
 from io import BytesIO
 import PyPDF2
 from langchain_experimental.text_splitter import SemanticChunker
@@ -13,82 +15,89 @@ import getpass
 from fastapi import FastAPI
 import logging
 import json
-
+ 
 app = FastAPI()
-
-# Setup logging
-logging.basicConfig(level=logging.INFO)
-logging.disable()
-logger = logging.getLogger(__name__)
-
+ 
+ 
 try:
+ 
     if not os.environ.get("OPENAI_API_KEY"):
-        os.environ["OPENAI_API_KEY"] = getpass.getpass("Enter API key for OpenAI: ")
-
+        logger.error('Open AI key is missing')
+ 
+    if not os.environ.get("GOOGLE_APPLICATION_CREDENTIALS"):
+        logger.error("GOOGLE_APPLICATION_CREDENTIALS environment variable is not set.")
+ 
     embeddings = OpenAIEmbeddings(model="text-embedding-3-large")
-
-    os.environ["GOOGLE_APPLICATION_CREDENTIALS"] = '.json'
-
-    if os.environ.get("GOOGLE_APPLICATION_CREDENTIALS") is None:
-        logger.warning("GOOGLE_APPLICATION_CREDENTIALS environment variable is not set.")
-
+ 
     text_splitter = SemanticChunker(OpenAIEmbeddings(), number_of_chunks=1000)
-
+ 
+ 
 except Exception as e:
+ 
     logger.error(f"Initialization failed: {e}")
     raise
-
+ 
+ 
+ 
+ 
+def document_creator(text:str):
+    try:    
+ 
+        long_doc = [Document(page_content=text)]
+        docs=text_splitter.split_documents(long_doc)
+        return docs
+   
+    except Exception as e:
+        logger.error(f"document creator {str(e)}")
+        raise
+ 
+ 
+ 
 def read_pdf_from_gcs(bucket_name, blob_names):
     """Read PDFs from GCS and extract text with error handling"""
-    complete_document = []
-    print(blob_names)
-    for blob_name in blob_names:
-        try:
-            logger.info(f"Processing blob: {blob_name}")
-            storage_client = storage.Client()
-            bucket = storage_client.bucket(bucket_name)
+    try:
+        complete_document = []
+        logger.info(f"Processing blob: {blob_name}")
+        storage_client = storage.Client()
+        bucket = storage_client.bucket(bucket_name)
+ 
+        for blob_name in blob_names:
+           
+           
             blob = bucket.blob(blob_name)
+            if not blob.exists():
+                logger.warning(f"⚠️ Blob '{blob_name}' not found in bucket '{bucket_name}'. Skipping.")
+                raise Exception(f"Blob '{blob_name}' not found in bucket '{bucket_name}'")
+ 
+ 
             pdf_bytes = blob.download_as_bytes()
             pdf_file = BytesIO(pdf_bytes)
             pdf_reader = PyPDF2.PdfReader(pdf_file)
-
-            data = []
-            for page_num, page in enumerate(pdf_reader.pages):
-                text = page.extract_text()
-                if text:
-                    print("58")
-                    data.append(text)
-                else:
-                    print("No text extracted from page {page_num} in blob {blob_name}")
-                    logger.warning(f"No text extracted from page {page_num} in blob {blob_name}")
-            pdf = '. '.join(data)
-
-            # Split the document into chunks
-            try:
-                docs = text_splitter.create_documents([pdf])
-                complete_document.append(docs)
-            except Exception as e:
-                print("Error during text splitting for {blob_name}: {e}")
-                logger.error(f"Error during text splitting for {blob_name}: {e}")
-
-        except Exception as e:
-
-            logger.error(f"Error processing blob {blob_name}: {e}")
-    print(chain.from_iterable(complete_document))
-    return list(chain.from_iterable(complete_document))
-
-
-
+            full_text = "\n".join([page.extract_text() for page in pdf_reader.pages if page.extract_text()])
+            docs=document_creator(full_text)
+            complete_document.append(docs)
+ 
+                   
+       
+        return chain.from_iterable(complete_document)
+   
+    except Exception as e:
+        logger.error(f"pdf reader form gcs failed: {e}")
+        raise
+       
+ 
+ 
+ 
 def embeddings_from_gcb(bucket_name, blob_names):
     try:
         docs = read_pdf_from_gcs(bucket_name, blob_names)
-        print(docs)
-        print(bucket_name)
-        print(blob_names)
+ 
+ 
+ 
         if not docs:
             logger.warning("No documents were extracted from the PDFs.")
             return "No documents extracted."
-
+ 
         if os.path.exists("faiss_index"):
             try:
                 vector_store = FAISS.load_local("faiss_index", embeddings, allow_dangerous_deserialization=True)
@@ -112,7 +121,7 @@ def embeddings_from_gcb(bucket_name, blob_names):
             except Exception as e:
                 logger.error(f"Failed to create new FAISS index: {e}")
                 return f"Error creating FAISS index: {e}"
-
+ 
         try:
             print("115")
             vector_store.add_documents(documents=docs)
@@ -121,22 +130,22 @@ def embeddings_from_gcb(bucket_name, blob_names):
         except Exception as e:
             logger.error(f"Failed to add documents to FAISS or save: {e}")
             return f"Error adding documents or saving FAISS index: {e}"
-
+ 
         return result_message
-
+ 
     except Exception as e:
         logger.error(f"Error in embeddings_from_gcb: {e}")
         return f"An error occurred: {e}"
-
+ 
 def embeddings_from_website_content(json_data):
    
-
+ 
     # Load JSON data
-    
-
+   
+ 
     documents = []
     metadata = []
-
+ 
     for idx, item in enumerate(json_data):
         text_parts = []
         if item.get("Title"):
@@ -148,15 +157,15 @@ def embeddings_from_website_content(json_data):
                 text_parts.extend(values)
         if item.get("Paragraphs"):
             text_parts.extend(item["Paragraphs"])
-
+ 
         combined_text = " ".join(text_parts).strip()
         if combined_text:
             documents.append(combined_text)
             metadata.append({"source": f"web_doc_{idx}"})
-
+ 
     if not documents:
         raise ValueError("No valid website content found for embedding.")
-
+ 
     # Split text into chunks
     text_splitter = RecursiveCharacterTextSplitter(
         chunk_size=1000,
@@ -166,33 +175,24 @@ def embeddings_from_website_content(json_data):
     )
     text_chunks = []
     chunk_metadata = []
-
+ 
     for i, doc in enumerate(documents):
         chunks = text_splitter.split_text(doc)
         text_chunks.extend(chunks)
         chunk_metadata.extend([metadata[i]] * len(chunks))
-
+ 
     if not text_chunks:
         raise ValueError("No text chunks were created from website content.")
-
+ 
     # Initialize OpenAI embeddings
     embeddings = OpenAIEmbeddings(model="text-embedding-3-large")
-
+ 
     # Build FAISS index
     faiss_index = FAISS.from_texts(text_chunks, embeddings, metadatas=chunk_metadata)
-
+ 
     # Save index and metadata
     faiss_index.save_local("website_faiss_index")
-
+ 
     print(f"✅ FAISS index saved with {len(text_chunks)} chunks.")
     return "FAISS vector store saved successfully!"
-
-
-
-
-
-
-
-
-   
-    
+ 
