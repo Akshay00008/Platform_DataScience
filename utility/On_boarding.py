@@ -1,31 +1,30 @@
+import os
+import getpass
+import logging
 from typing import List, TypedDict
 from pydantic import BaseModel
-from Databases.mongo import Bot_Retrieval
+from dotenv import load_dotenv
 from langchain.chat_models import init_chat_model
 from langchain_core.messages import HumanMessage, SystemMessage
-from dotenv import load_dotenv
-from embeddings_creator import embeddings_from_gcb
-import os
-from langgraph.graph import START, StateGraph
 from langchain_core.documents import Document
 from langchain_community.vectorstores import FAISS
 from langchain_openai import OpenAIEmbeddings
-import getpass
-import logging
+from langgraph.graph import START, StateGraph
 from utility.retrain_bot import fetch_data
+from Databases.mongo import Bot_Retrieval
 
 # Setup logging
 logging.basicConfig(level=logging.INFO)
-logging.disable()
 logger = logging.getLogger(__name__)
+
+# Load environment variables
+load_dotenv()
 
 try:
     if not os.environ.get("OPENAI_API_KEY"):
         os.environ["OPENAI_API_KEY"] = getpass.getpass("Enter API key for OpenAI: ")
 
     embeddings = OpenAIEmbeddings(model="text-embedding-3-large")
-
-    load_dotenv()
 
     api = os.getenv('OPENAI_API_KEY')
     model = os.getenv('GPT_model')
@@ -37,6 +36,7 @@ except Exception as e:
     logger.error(f"Initialization failed: {e}")
     raise
 
+
 def load_llm(key, model_provider, model_name):
     try:
         if not all([key, model_provider, model_name]):
@@ -47,25 +47,30 @@ def load_llm(key, model_provider, model_name):
         logger.error(f"Failed to initialize LLM: {e}")
         raise
 
+
+# Load the LLM (Large Language Model)
 llm = load_llm(api, model_provider, model)
 
+# Conversation state to maintain user history
 converstation_state = {}
 
 def chatbot(chatbot_id, version_id, prompt, user_id):
     try:
         request_body = {
-        "chatbot_id": chatbot_id,
-        "version_id": version_id,
-        "collection_name": ["guidance", "handoff"]
+            "chatbot_id": chatbot_id,
+            "version_id": version_id,
+            "collection_name": ["guidance", "handoff"]
         }
 
         guidelines = fetch_data(request_body)
         print("Guidelines generated successfully")
-        
+
+        # Retrieve bot information from the database
         Bot_information = Bot_Retrieval(chatbot_id, version_id)
         if not Bot_information:
             raise ValueError(f"No bot information found for chatbot_id {chatbot_id} and version_id {version_id}")
 
+        # Initialize conversation history if not already present
         if user_id not in converstation_state:
             converstation_state[user_id] = [{'role': 'user', 'content': prompt}]
 
@@ -90,8 +95,8 @@ def chatbot(chatbot_id, version_id, prompt, user_id):
 
     except Exception as e:
         logger.error(f"Error in chatbot function: {e}")
-        print(f"Error in chatbot function: {e}")
         return f"An error occurred: {e}"
+
 
 def Personal_chatbot(converstation_history, prompt, languages, purpose, tone_and_style, greeting, guidelines):
     class State(TypedDict):
@@ -104,16 +109,16 @@ def Personal_chatbot(converstation_history, prompt, languages, purpose, tone_and
             # Load both FAISS indexes
             new_vector_store = FAISS.load_local("website_faiss_index", embeddings, allow_dangerous_deserialization=True)
             new_vector_store_1 = FAISS.load_local("faiss_index", embeddings, allow_dangerous_deserialization=True)
-            
+
             # Retrieve documents from both FAISS indices
             retrieved_docs = new_vector_store.similarity_search(state['question'])
             retrieved_docs_2 = new_vector_store_1.similarity_search(state['question'])
 
             # Combine results from both indices, ensuring no duplicates
             combined_docs = list(set(retrieved_docs + retrieved_docs_2))  # Use set to avoid duplicates
-            
+
             return {"context": combined_docs}
-    
+
         except Exception as e:
             logger.error(f"Error in document retrieval: {e}")
             return {"context": []}
@@ -124,21 +129,21 @@ def Personal_chatbot(converstation_history, prompt, languages, purpose, tone_and
             messages = [
                 SystemMessage(
                     f"""
-    Role:  Role: You are a personal chatbot with the following purpose: {purpose}.
-    You can communicate fluently in the following languages: {languages}.
-    {greeting} Always keep the conversation context in mind, including the chat history:
-    {converstation_history}
-    You also have access to context derived from document scores:
-    {docs_content}
-    Maintain a tone and style that aligns with the following guidelines:
-    {tone_and_style}
-    """
+                    Role: You are a personal chatbot with the following purpose: {purpose}.
+                    You can communicate fluently in the following languages: {languages}.
+                    {greeting} Always keep the conversation context in mind, including the chat history:
+                    {converstation_history}
+                    You also have access to context derived from document scores:
+                    {docs_content}
+                    Maintain a tone and style that aligns with the following guidelines:
+                    {tone_and_style}
+                    """
                 ),
                 HumanMessage(f"{state['question']}")
             ]
             response = llm.invoke(messages)
             return {"answer": response.content}
-        
+
         except Exception as e:
             logger.error(f"Error in LLM generation: {e}")
             return {"answer": "Sorry, something went wrong in generating a response."}
@@ -148,12 +153,14 @@ def Personal_chatbot(converstation_history, prompt, languages, purpose, tone_and
         graph_builder.add_edge(START, "retrieve")
         graph = graph_builder.compile()
 
+        # Invoke the state machine with the prompt
         response = graph.invoke({"question": prompt})
 
         return response.get('answer', "No response generated.")
     except Exception as e:
         logger.error(f"Error in conversation graph: {e}")
         return f"An error occurred during conversation: {e}"
+
 
 
 

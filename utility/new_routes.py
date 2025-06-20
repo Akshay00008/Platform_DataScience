@@ -219,7 +219,7 @@ def vector_embeddings():
         with lock:
             active_threads += 1
         Thread(target=background_embedding_task, args=(bucket_name, blob_names)).start()
-        result=bucket_files(bucket_name, blob_names,chatbot_id,version_id)
+        # result=bucket_files(bucket_name, blob_names,chatbot_id,version_id)
         # Thread(target=bucket_files,args=(bucket_name, blob_names,chatbot_id,version_id)).start()
         # result=files_upload_description(bucket_name, blob_names)
         print(result)
