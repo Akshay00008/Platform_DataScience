@@ -59,21 +59,21 @@ def update_sync_status(chatbot_id, version_id):
         print(result)
 
         if result.modified_count > 0:
-            loggs.Logging(f"✅ Sync status updated successfully for chatbot_id={chatbot_id}, version_id={version_id}")
+            loggs.info(f"✅ Sync status updated successfully for chatbot_id={chatbot_id}, version_id={version_id}")
             print("0")
         else:
-            loggs.Logging(f"⚠️ No document updated for chatbot_id={chatbot_id}, version_id={version_id}")
+            loggs.info(f"⚠️ No document updated for chatbot_id={chatbot_id}, version_id={version_id}")
             print("1")
 
     except Exception as e:
-        loggs.Logging(f"❌ Failed to update sync status: {e}")
+        loggs.info(f"❌ Failed to update sync status: {e}")
 
 def mark_thread_done():
     global active_threads
     with lock:
         active_threads -= 1
         if active_threads == 0:
-            loggs.Logging("✅ All background tasks completed. Status: completed")
+            loggs.info("✅ All background tasks completed. Status: completed")
 
 def bucket_files(bucket_name, blob_names,chatbot_id,version_id):
     """Main function to run the process"""
@@ -87,7 +87,7 @@ def bucket_files(bucket_name, blob_names,chatbot_id,version_id):
 
 def process_scraping(url, chatbot_id, version_id): 
     try:
-        loggs.Logging(f"Started background scraping for URL: {url}")
+        loggs.info(f"Started background scraping for URL: {url}")
         print(f"Started background scraping for URL: {url}")
 
         df = crawl_website(url)
@@ -96,7 +96,7 @@ def process_scraping(url, chatbot_id, version_id):
         with open("website_data.json", "w") as f:
             json.dump(json_data, f, indent=4)
 
-        loggs.Logging(f"Scraping complete for URL: {url}")
+        loggs.info(f"Scraping complete for URL: {url}")
         print(f"Scraping complete for URL: {url}")
 
         website_taggers = new_generate_tags_from_gpt(json_data)
@@ -108,32 +108,32 @@ def process_scraping(url, chatbot_id, version_id):
         embeddings_from_website_content(json_data)
         print("Website vector created")
 
-        loggs.Logging(f"Tags and vectors generated for URL: {url}")
+        loggs.info(f"Tags and vectors generated for URL: {url}")
 
         # ✅ Only mark thread done if all succeed
         mark_thread_done()
 
     except Exception as e:
-        loggs.Logging(f"Error during background scraping: {str(e)}")
+        loggs.info(f"Error during background scraping: {str(e)}")
 
 
 def background_embedding_task(bucket, blobs):
     try:
-        loggs.Logging(f"Started embedding for bucket: {bucket}, blobs: {blobs}")
+        loggs.info(f"Started embedding for bucket: {bucket}, blobs: {blobs}")
         embeddings_from_gcb(bucket_name=bucket, blob_names=blobs)
-        loggs.Logging(f"Completed embedding generation for blobs in bucket: {bucket}")
+        loggs.info(f"Completed embedding generation for blobs in bucket: {bucket}")
     except Exception as e:
-        loggs.Logging(f"Error during embedding generation: {str(e)}")
+        loggs.info(f"Error during embedding generation: {str(e)}")
     finally:
         mark_thread_done()
 
 def background_scrape(url, chatbot, version):
     try:
-        loggs.Logging(f"Started background scrape for playlist: {url}")
+        loggs.info(f"Started background scrape for playlist: {url}")
         count = extract_and_store_descriptions(url, chatbot, version)
-        loggs.Logging(f"Successfully inserted {count} videos from {url} for chatbot {chatbot}")
+        loggs.info(f"Successfully inserted {count} videos from {url} for chatbot {chatbot}")
     except Exception as e:
-        loggs.Logging(f"Background scrape error: {str(e)}")
+        loggs.info(f"Background scrape error: {str(e)}")
     finally:
         mark_thread_done()
 
@@ -155,20 +155,20 @@ def onboard():
         sync_info["version_id"] = version_id
 
         Thread(target=sync_status_monitor).start()
-        loggs.Logging(f"✅ Onboarding successful for chatbot_id={chatbot_id}, version_id={version_id}")
+        loggs.info(f"✅ Onboarding successful for chatbot_id={chatbot_id}, version_id={version_id}")
         return jsonify({"result": bot_data}), 200
     except Exception as e:
-        loggs.Logging(f"Onboarding error: {e}")
+        loggs.info(f"Onboarding error: {e}")
         return jsonify({"error": "Internal server error"}), 500
 
 def sync_status_monitor():
     chatbot_id = sync_info.get("chatbot_id")
     version_id = sync_info.get("version_id")
     if not chatbot_id or not version_id:
-        loggs.Logging("❌ Missing chatbot_id or version_id for sync status monitor.")
+        loggs.info("❌ Missing chatbot_id or version_id for sync status monitor.")
         return
 
-    loggs.Logging(f"🔁 Started monitoring sync status for chatbot_id={chatbot_id}, version_id={version_id}")
+    loggs.info(f"🔁 Started monitoring sync status for chatbot_id={chatbot_id}, version_id={version_id}")
     try:
         while True:
             with lock:
@@ -178,7 +178,7 @@ def sync_status_monitor():
                 break
             time.sleep(120)
     except Exception as e:
-        loggs.Logging(f"❌ Sync monitor error: {e}")
+        loggs.info(f"❌ Sync monitor error: {e}")
 
 @app.route("/webscrapper", methods=["POST"], strict_slashes=False)
 def scrapper():
@@ -195,10 +195,10 @@ def scrapper():
         with lock:
             active_threads += 1
         Thread(target=process_scraping, args=(url,chatbot_id,version_id)).start()
-        loggs.Logging(f"✅ Web scraping started for {url}")
+        loggs.info(f"✅ Web scraping started for {url}")
         return jsonify({"result": "Scraping started in background."}), 200
     except Exception as e:
-        loggs.Logging(f"Scraper error: {e}")
+        loggs.info(f"Scraper error: {e}")
         return jsonify({"error": "Internal error"}), 500
 
 @app.route("/file_uploads", methods=["POST"], strict_slashes=False)
@@ -223,10 +223,10 @@ def vector_embeddings():
         # Thread(target=bucket_files,args=(bucket_name, blob_names,chatbot_id,version_id)).start()
         # result=files_upload_description(bucket_name, blob_names)
         print(result)
-        loggs.Logging(f"✅ Embedding job started for bucket: {bucket_name}")
+        loggs.info(f"✅ Embedding job started for bucket: {bucket_name}")
         return jsonify({"result": "Embedding started in background."}), 200
     except Exception as e:
-        loggs.Logging(f"Embedding error: {e}")
+        loggs.info(f"Embedding error: {e}")
         return jsonify({"error": str(e)}), 500
 
 @app.route('/youtube_url', methods=['POST'])
@@ -244,10 +244,10 @@ def extract():
         with lock:
             active_threads += 1
         Thread(target=background_scrape, args=(playlist_url, chatbot_id, version_id)).start()
-        loggs.Logging(f"✅ YouTube scraping started for chatbot_id={chatbot_id}")
+        loggs.info(f"✅ YouTube scraping started for chatbot_id={chatbot_id}")
         return jsonify({'message': 'YouTube scraping started in background.'}), 200
     except Exception as e:
-        loggs.Logging(f"YouTube scraping error: {e}")
+        loggs.info(f"YouTube scraping error: {e}")
         return jsonify({'error': str(e)}), 500
 
 @app.route('/llm', methods=['POST'], strict_slashes=False)
@@ -263,20 +263,20 @@ def llm_endpoint():
             return jsonify({"error": "Missing required fields"}), 400
 
         result = chatbot(chatbot_id, version_id, query, user_id)
-        loggs.Logging(f"✅ LLM query processed for chatbot_id={chatbot_id}, user_id={user_id}")
+        loggs.info(f"✅ LLM query processed for chatbot_id={chatbot_id}, user_id={user_id}")
         return jsonify({"result": result})
     except Exception as e:
-        loggs.Logging(f"LLM error: {e}")
+        loggs.info(f"LLM error: {e}")
         return jsonify({"error": f"LLM error: {str(e)}"}), 500
 
 @app.route("/status", methods=["GET"])
 def get_status():
     with lock:
         if active_threads == 0:
-            loggs.Logging("✅ All tasks completed")
+            loggs.info("✅ All tasks completed")
             return jsonify({"status": "completed"})
         else:
-            loggs.Logging(f"⏳ {active_threads} task(s) still running")
+            loggs.info(f"⏳ {active_threads} task(s) still running")
             return jsonify({"status": f"{active_threads} task(s) still running"})
         
 @app.route("/faqs", methods=["POST"])
