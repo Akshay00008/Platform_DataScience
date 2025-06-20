@@ -15,6 +15,7 @@ import getpass
 from fastapi import FastAPI
 from utility.logger_file import Logs
 import json
+from dotenv import load_dotenv
  
 app = FastAPI()
 logger = Logs()  # Instantiate the logger here
@@ -23,6 +24,11 @@ try:
  
     if not os.environ.get("OPENAI_API_KEY"):
         logger.error('Open AI key is missing')
+
+    load_dotenv()    
+    api = os.getenv('OPENAI_API_KEY')
+    model = os.getenv('GPT_model')
+    model_provider = os.getenv('GPT_model_provider')    
  
     if not os.environ.get("GOOGLE_APPLICATION_CREDENTIALS"):
         logger.error("GOOGLE_APPLICATION_CREDENTIALS environment variable is not set.")
