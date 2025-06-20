@@ -78,17 +78,9 @@ def read_pdf_from_gcs(bucket_name, blob_names):
         logger.error(f"PDF reader from GCS failed: {e}")
         raise
  
-import os
-import logging
-import numpy as np
-import faiss
-from langchain.embeddings import OpenAIEmbeddings
-from langchain.vectorstores import InMemoryDocstore
-from faiss import FAISS
 
-# Set up logging
-logger = logging.getLogger(__name__)
-logging.basicConfig(level=logging.INFO)
+
+
 
 # Embedding function (assuming OpenAIEmbeddings is already initialized globally or passed as a parameter)
 embeddings = OpenAIEmbeddings(model="text-embedding-003")  # Example embedding initialization
