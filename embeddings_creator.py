@@ -90,6 +90,14 @@ def embeddings_from_gcb(bucket_name, blob_names):
                 vector_store = FAISS.load_local("faiss_index", embeddings, allow_dangerous_deserialization=True)
                 logger.info("Loaded existing FAISS index.")
                 result_message = "Used existing Faiss_index"
+                try:
+                    logger.info("Adding documents and saving FAISS index.")
+                    vector_store.add_documents(documents=docs)
+                    vector_store.save_local("faiss_index")
+                    logger.info("Documents added and index saved successfully.")
+                except Exception as e:
+                    logger.error(f"Failed to add documents to FAISS or save: {e}")
+                    return f"Error adding documents or saving FAISS index: {e}"
             except Exception as e:
                 logger.error(f"Failed to load existing FAISS index: {e}")
                 return f"Error loading existing FAISS index: {e}"
@@ -103,20 +111,14 @@ def embeddings_from_gcb(bucket_name, blob_names):
                     docstore=InMemoryDocstore(),
                     index_to_docstore_id={},
                 )
+                vector_store.save_local("faiss_index")
                 logger.info("Created new FAISS index.")
                 result_message = "Created new Faiss_index"
             except Exception as e:
                 logger.error(f"Failed to create new FAISS index: {e}")
                 return f"Error creating FAISS index: {e}"
  
-        try:
-            logger.info("Adding documents and saving FAISS index.")
-            vector_store.add_documents(documents=docs)
-            vector_store.save_local("faiss_index")
-            logger.info("Documents added and index saved successfully.")
-        except Exception as e:
-            logger.error(f"Failed to add documents to FAISS or save: {e}")
-            return f"Error adding documents or saving FAISS index: {e}"
+      
  
         return result_message
  
@@ -173,6 +175,7 @@ def embeddings_from_website_content(json_data):
  
         # Build FAISS index
         faiss_index = FAISS.from_texts(text_chunks, embeddings, metadatas=chunk_metadata)
+          
  
         # Save index and metadata
         faiss_index.save_local("website_faiss_index")
