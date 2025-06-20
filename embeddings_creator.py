@@ -78,70 +78,98 @@ def read_pdf_from_gcs(bucket_name, blob_names):
         logger.error(f"PDF reader from GCS failed: {e}")
         raise
  
+import os
+import logging
+import numpy as np
+import faiss
+from langchain.embeddings import OpenAIEmbeddings
+from langchain.vectorstores import InMemoryDocstore
+from faiss import FAISS
+
+# Set up logging
+logger = logging.getLogger(__name__)
+logging.basicConfig(level=logging.INFO)
+
+# Embedding function (assuming OpenAIEmbeddings is already initialized globally or passed as a parameter)
+embeddings = OpenAIEmbeddings(model="text-embedding-003")  # Example embedding initialization
+
 def embeddings_from_gcb(bucket_name, blob_names):
     try:
+        # Assuming `read_pdf_from_gcs` is a function that reads PDFs from Google Cloud Storage
         docs = read_pdf_from_gcs(bucket_name, blob_names)
- 
+        
         if not docs:
             logger.warning("No documents were extracted from the PDFs.")
             return "No documents extracted."
- 
+
+        # Check if the FAISS index exists
         if os.path.exists("faiss_index"):
             try:
+                # Load the existing FAISS index
                 vector_store = FAISS.load_local("faiss_index", embeddings, allow_dangerous_deserialization=True)
                 logger.info("Loaded existing FAISS index.")
-                result_message = "Used existing Faiss_index"
-                try:
-                    logger.info("Generating embeddings for the new documents...")
-                    new_doc_embeddings = embeddings.embed_documents(docs)
-                    print("Embeddings made")
-                    # Ensure the embeddings are numpy arrays (required by FAISS)
-                    new_doc_embeddings = np.array(new_doc_embeddings)
-                    logger.info(f"Generated embeddings for {len(docs)} new documents.")
 
-                    # Create a new FAISS index for the new documents
-                    logger.info("Creating new FAISS index for the new documents...")
-                    new_index = FAISS(embedding_function=embeddings)
-                    new_index.add(new_doc_embeddings)
+                # Generate embeddings for the new documents
+                logger.info("Generating embeddings for the new documents...")
+                new_doc_embeddings = embeddings.embed_documents(docs)
 
-                    # Merge the existing FAISS index with the new index
-                    vector_store.index.merge(new_index.index)
-                    logger.info("Merged the existing FAISS index with the new documents.")
+                # Ensure the embeddings are numpy arrays (required by FAISS)
+                new_doc_embeddings = np.array(new_doc_embeddings)
+                logger.info(f"Generated embeddings for {len(docs)} new documents.")
 
-                    # Save the updated FAISS index
-                    vector_store.save_local("faiss_index")
-                    logger.info("Documents added and FAISS index saved successfully.")
+                # Create a new FAISS index for the new documents
+                dim = len(new_doc_embeddings[0])  # Get the dimensionality of the embeddings
+                new_index = faiss.IndexFlatL2(dim)  # Create a new index with L2 distance metric
+                new_index.add(new_doc_embeddings)  # Add the new embeddings to the new index
 
-                except Exception as e:
-                    logger.error(f"Failed to add documents to FAISS or save: {e}")
-                    return f"Error adding documents or saving FAISS index: {e}"
+                # Merge the existing FAISS index with the new index
+                vector_store.index.merge(new_index)
+                logger.info("Merged the existing FAISS index with the new documents.")
+
+                # Save the updated FAISS index
+                vector_store.save_local("faiss_index")
+                logger.info("Documents added and FAISS index saved successfully.")
+
+                return "FAISS index updated successfully!"
+
             except Exception as e:
-                logger.error(f"Failed to load existing FAISS index: {e}")
-                return f"Error loading existing FAISS index: {e}"
+                logger.error(f"Failed to add documents to FAISS or save: {e}")
+                return f"Error adding documents or saving FAISS index: {e}"
+
         else:
             try:
-                dim = len(embeddings.embed_query("hello world"))
-                index = faiss.IndexFlatL2(dim)
+                # Create a new FAISS index for the new documents
+                logger.info("Creating a new FAISS index for the new documents...")
+                new_doc_embeddings = embeddings.embed_documents(docs)
+                new_doc_embeddings = np.array(new_doc_embeddings)
+
+                # Create a new FAISS index
+                dim = len(new_doc_embeddings[0])  # Get the dimensionality of the embeddings
+                index = faiss.IndexFlatL2(dim)  # Create a new index with L2 distance metric
+                index.add(new_doc_embeddings)  # Add the new embeddings to the index
+
+                # Create the vector store with the new index
                 vector_store = FAISS(
                     embedding_function=embeddings,
                     index=index,
                     docstore=InMemoryDocstore(),
                     index_to_docstore_id={},
                 )
+
+                # Save the newly created FAISS index
                 vector_store.save_local("faiss_index")
-                logger.info("Created new FAISS index.")
-                result_message = "Created new Faiss_index"
+                logger.info("Created new FAISS index and saved it.")
+                return "Created and saved new FAISS index."
+
             except Exception as e:
                 logger.error(f"Failed to create new FAISS index: {e}")
                 return f"Error creating FAISS index: {e}"
- 
-      
- 
-        return result_message
- 
+
     except Exception as e:
-        logger.error(f"Error in embeddings_from_gcb: {e}")
-        return f"An error occurred: {e}"
+        logger.error(f"Failed to process documents or create embeddings: {e}")
+        return f"Error processing documents or creating embeddings: {e}"
+
+
  
 def embeddings_from_website_content(json_data):
     try:
