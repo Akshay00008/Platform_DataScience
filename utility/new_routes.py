@@ -221,8 +221,8 @@ def vector_embeddings():
         Thread(target=background_embedding_task, args=(bucket_name, blob_names)).start()
         # result=bucket_files(bucket_name, blob_names,chatbot_id,version_id)
         # Thread(target=bucket_files,args=(bucket_name, blob_names,chatbot_id,version_id)).start()
-        # result=files_upload_description(bucket_name, blob_names)
-        # print(result)
+        result=description_from_gcs(bucket_name, blob_names,chatbot_id,version_id)
+        print("result : ", result)
         loggs.info(f"✅ Embedding job started for bucket: {bucket_name}")
         return jsonify({"result": "Embedding started in background."}), 200
     except Exception as e:
