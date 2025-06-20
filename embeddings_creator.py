@@ -17,7 +17,7 @@ from utility.logger_file import Logs
 import json
  
 app = FastAPI()
-logger=Logs
+logger = Logs()  # Instantiate the logger here
  
 try:
  
@@ -31,68 +31,49 @@ try:
  
     text_splitter = SemanticChunker(OpenAIEmbeddings(), number_of_chunks=1000)
  
- 
 except Exception as e:
+    logger.error(f"Reconciliation failed: {str(e)}")
+    raise ValueError(f"Reconciliation failed: {str(e)}")
  
-    logger.error(f"Initialization failed: {e}")
-    raise
- 
- 
- 
- 
-def document_creator(text:str):
-    try:    
- 
+def document_creator(text: str):
+    try:
         long_doc = [Document(page_content=text)]
-        docs=text_splitter.split_documents(long_doc)
+        docs = text_splitter.split_documents(long_doc)
         return docs
-   
     except Exception as e:
-        logger.error(f"document creator {str(e)}")
+        logger.error(f"Document creator failed: {str(e)}")
         raise
- 
- 
  
 def read_pdf_from_gcs(bucket_name, blob_names):
     """Read PDFs from GCS and extract text with error handling"""
     try:
         complete_document = []
-        logger.info(f"Processing blob: {blob_name}")
+        logger.info(f"Processing blobs: {', '.join(blob_names)}")
         storage_client = storage.Client()
         bucket = storage_client.bucket(bucket_name)
  
         for blob_name in blob_names:
-           
-           
             blob = bucket.blob(blob_name)
             if not blob.exists():
                 logger.warning(f"⚠️ Blob '{blob_name}' not found in bucket '{bucket_name}'. Skipping.")
                 raise Exception(f"Blob '{blob_name}' not found in bucket '{bucket_name}'")
  
- 
             pdf_bytes = blob.download_as_bytes()
             pdf_file = BytesIO(pdf_bytes)
             pdf_reader = PyPDF2.PdfReader(pdf_file)
             full_text = "\n".join([page.extract_text() for page in pdf_reader.pages if page.extract_text()])
-            docs=document_creator(full_text)
+            docs = document_creator(full_text)
             complete_document.append(docs)
  
-                   
-       
         return chain.from_iterable(complete_document)
-   
+ 
     except Exception as e:
-        logger.error(f"pdf reader form gcs failed: {e}")
+        logger.error(f"PDF reader from GCS failed: {e}")
         raise
-       
- 
- 
  
 def embeddings_from_gcb(bucket_name, blob_names):
     try:
         docs = read_pdf_from_gcs(bucket_name, blob_names)
- 
- 
  
         if not docs:
             logger.warning("No documents were extracted from the PDFs.")
@@ -123,7 +104,7 @@ def embeddings_from_gcb(bucket_name, blob_names):
                 return f"Error creating FAISS index: {e}"
  
         try:
-            print("115")
+            logger.info("Adding documents and saving FAISS index.")
             vector_store.add_documents(documents=docs)
             vector_store.save_local("faiss_index")
             logger.info("Documents added and index saved successfully.")
@@ -138,61 +119,61 @@ def embeddings_from_gcb(bucket_name, blob_names):
         return f"An error occurred: {e}"
  
 def embeddings_from_website_content(json_data):
-   
+    try:
+        # Process website content here
+        documents = []
+        metadata = []
  
-    # Load JSON data
-   
+        for idx, item in enumerate(json_data):
+            text_parts = []
+            if item.get("Title"):
+                text_parts.append(item["Title"])
+            if item.get("Meta Description") and item["Meta Description"] != "No description":
+                text_parts.append(item["Meta Description"])
+            if item.get("Headings"):
+                for key, values in item["Headings"].items():
+                    text_parts.extend(values)
+            if item.get("Paragraphs"):
+                text_parts.extend(item["Paragraphs"])
  
-    documents = []
-    metadata = []
+            combined_text = " ".join(text_parts).strip()
+            if combined_text:
+                documents.append(combined_text)
+                metadata.append({"source": f"web_doc_{idx}"})
  
-    for idx, item in enumerate(json_data):
-        text_parts = []
-        if item.get("Title"):
-            text_parts.append(item["Title"])
-        if item.get("Meta Description") and item["Meta Description"] != "No description":
-            text_parts.append(item["Meta Description"])
-        if item.get("Headings"):
-            for key, values in item["Headings"].items():
-                text_parts.extend(values)
-        if item.get("Paragraphs"):
-            text_parts.extend(item["Paragraphs"])
+        if not documents:
+            raise ValueError("No valid website content found for embedding.")
  
-        combined_text = " ".join(text_parts).strip()
-        if combined_text:
-            documents.append(combined_text)
-            metadata.append({"source": f"web_doc_{idx}"})
+        # Split text into chunks
+        text_splitter = RecursiveCharacterTextSplitter(
+            chunk_size=1000,
+            chunk_overlap=20,
+            length_function=len,
+            is_separator_regex=False,
+        )
+        text_chunks = []
+        chunk_metadata = []
  
-    if not documents:
-        raise ValueError("No valid website content found for embedding.")
+        for i, doc in enumerate(documents):
+            chunks = text_splitter.split_text(doc)
+            text_chunks.extend(chunks)
+            chunk_metadata.extend([metadata[i]] * len(chunks))
  
-    # Split text into chunks
-    text_splitter = RecursiveCharacterTextSplitter(
-        chunk_size=1000,
-        chunk_overlap=20,
-        length_function=len,
-        is_separator_regex=False,
-    )
-    text_chunks = []
-    chunk_metadata = []
+        if not text_chunks:
+            raise ValueError("No text chunks were created from website content.")
  
-    for i, doc in enumerate(documents):
-        chunks = text_splitter.split_text(doc)
-        text_chunks.extend(chunks)
-        chunk_metadata.extend([metadata[i]] * len(chunks))
+        # Initialize OpenAI embeddings
+        embeddings = OpenAIEmbeddings(model="text-embedding-3-large")
  
-    if not text_chunks:
-        raise ValueError("No text chunks were created from website content.")
+        # Build FAISS index
+        faiss_index = FAISS.from_texts(text_chunks, embeddings, metadatas=chunk_metadata)
  
-    # Initialize OpenAI embeddings
-    embeddings = OpenAIEmbeddings(model="text-embedding-3-large")
+        # Save index and metadata
+        faiss_index.save_local("website_faiss_index")
  
-    # Build FAISS index
-    faiss_index = FAISS.from_texts(text_chunks, embeddings, metadatas=chunk_metadata)
+        logger.info(f"✅ FAISS index saved with {len(text_chunks)} chunks.")
+        return "FAISS vector store saved successfully!"
  
-    # Save index and metadata
-    faiss_index.save_local("website_faiss_index")
- 
-    print(f"✅ FAISS index saved with {len(text_chunks)} chunks.")
-    return "FAISS vector store saved successfully!"
- 
+    except Exception as e:
+        logger.error(f"Error in embeddings_from_website_content: {e}")
+        return f"An error occurred: {e}"
