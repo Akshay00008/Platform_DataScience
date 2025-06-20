@@ -98,9 +98,20 @@ def embeddings_from_gcb(bucket_name, blob_names):
                     # Ensure the embeddings are numpy arrays (required by FAISS)
                     new_doc_embeddings = np.array(new_doc_embeddings)
                     logger.info(f"Generated embeddings for {len(docs)} new documents.")
-                    vector_store.add(new_doc_embeddings)
+
+                    # Create a new FAISS index for the new documents
+                    logger.info("Creating new FAISS index for the new documents...")
+                    new_index = FAISS(embedding_function=embeddings)
+                    new_index.add(new_doc_embeddings)
+
+                    # Merge the existing FAISS index with the new index
+                    vector_store.index.merge(new_index.index)
+                    logger.info("Merged the existing FAISS index with the new documents.")
+
+                    # Save the updated FAISS index
                     vector_store.save_local("faiss_index")
-                    logger.info("Documents added and index saved successfully.")
+                    logger.info("Documents added and FAISS index saved successfully.")
+
                 except Exception as e:
                     logger.error(f"Failed to add documents to FAISS or save: {e}")
                     return f"Error adding documents or saving FAISS index: {e}"
