@@ -91,14 +91,9 @@ def embeddings_from_gcb(bucket_name, blob_names):
                 logger.info("Loaded existing FAISS index.")
                 result_message = "Used existing Faiss_index"
                 try:
-                    logger.info("Adding documents and saving FAISS index.")
-                    vector_store = FAISS(
-                    embedding_function=embeddings,
-                    index=index,
-                    docstore=InMemoryDocstore(),
-                    index_to_docstore_id={},
-                        )
-                    vector_store.add_documents(documents=docs)
+                    new_doc_embeddings = embeddings.embed_documents(docs)
+                    logger.info(f"Generated embeddings for {len(docs)} new documents.")
+                    vector_store.add(new_doc_embeddings)
                     vector_store.save_local("faiss_index")
                     logger.info("Documents added and index saved successfully.")
                 except Exception as e:
