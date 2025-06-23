@@ -93,24 +93,29 @@ def read_pdf_from_gcs(bucket_name, blob_names):
 def embeddings_from_gcb(bucket_name, blob_names):
     try:
         docs = read_pdf_from_gcs(bucket_name, blob_names)
- 
- 
- 
+
         if not docs:
             logger.warning("No documents were extracted from the PDFs.")
             return "No documents extracted."
- 
+
+        # Check if FAISS index already exists
         if os.path.exists("faiss_index"):
             try:
                 vector_store = FAISS.load_local("faiss_index", embeddings, allow_dangerous_deserialization=True)
                 logger.info("Loaded existing FAISS index.")
-                result_message = "Used existing Faiss_index"
+
+                # 🔄 Add new documents
+                vector_store.add_documents(docs)
+                logger.info("Added new documents to existing FAISS index.")
+                
+                result_message = "Updated existing FAISS index with new documents"
             except Exception as e:
-                logger.error(f"Failed to load existing FAISS index: {e}")
-                return f"Error loading existing FAISS index: {e}"
+                logger.error(f"Failed to load or update existing FAISS index: {e}")
+                return f"Error updating existing FAISS index: {e}"
         else:
             try:
-                dim = len(embeddings.embed_query("hello world"))
+                # Create a new index
+                dim = len(embeddings.embed_query(docs[0].page_content))
                 index = faiss.IndexFlatL2(dim)
                 vector_store = FAISS(
                     embedding_function=embeddings,
@@ -118,26 +123,24 @@ def embeddings_from_gcb(bucket_name, blob_names):
                     docstore=InMemoryDocstore(),
                     index_to_docstore_id={},
                 )
-                logger.info("Created new FAISS index.")
-                result_message = "Created new Faiss_index"
+
+                vector_store.add_documents(docs)
+                logger.info("Created new FAISS index and added documents.")
+                
+                result_message = "Created new FAISS index"
             except Exception as e:
-                logger.error(f"Failed to create new FAISS index: {e}")
-                return f"Error creating FAISS index: {e}"
- 
-        try:
-            print("115")
-            vector_store.add_documents(documents=docs)
-            vector_store.save_local("faiss_index")
-            logger.info("Documents added and index saved successfully.")
-        except Exception as e:
-            logger.error(f"Failed to add documents to FAISS or save: {e}")
-            return f"Error adding documents or saving FAISS index: {e}"
- 
+                logger.error(f"Failed to create FAISS index: {e}")
+                return f"Error creating new FAISS index: {e}"
+
+        # 💾 Save updated/new index
+        vector_store.save_local("faiss_index")
+        logger.info("Saved FAISS index.")
+
         return result_message
- 
+
     except Exception as e:
-        logger.error(f"Error in embeddings_from_gcb: {e}")
-        return f"An error occurred: {e}"
+        logger.error(f"Embeddings from GCB failed: {e}")
+        return f"Embeddings processing failed: {e}"
  
 def embeddings_from_website_content(json_data):
    
