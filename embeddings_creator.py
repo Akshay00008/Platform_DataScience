@@ -59,12 +59,12 @@ def read_pdf_from_gcs(bucket_name, blob_names):
     """Read PDFs from GCS and extract text with error handling"""
     try:
         complete_document = []
-        logger.info(f"Processing blob: {blob_name}")
+        
         storage_client = storage.Client()
         bucket = storage_client.bucket(bucket_name)
  
         for blob_name in blob_names:
-           
+            logger.info(f"Processing blob: {blob_name}")
            
             blob = bucket.blob(blob_name)
             if not blob.exists():
