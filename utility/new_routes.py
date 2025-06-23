@@ -210,12 +210,30 @@ def vector_embeddings():
         bucket_name = data.get('bucket_name')
         chatbot_id = data.get('chatbot_id')
         version_id = data.get('version_id')
-        
+        # Initialize an empty list to store only the filenames
+        filenames = []
+
+        # List to store file information separately
+        file_info = []
 
 
         if not blob_names or not bucket_name:
             return jsonify({"error": "Missing blob_names or bucket_name"}), 400
+        
 
+        for blob in blob_names:
+            filenames.append(blob.get("filename"))  # Store only the filenames
+            file_info.append({
+                "id": blob.get("id"),
+                "filename": blob.get("filename"),
+                "bucket_name": bucket_name,
+                "chatbot_id": chatbot_id,
+                "version_id": version_id
+            })
+
+        blob_names=filenames
+        print("line235")
+        print(blob_names)
         with lock:
             active_threads += 1
         Thread(target=background_embedding_task, args=(bucket_name, blob_names)).start()
