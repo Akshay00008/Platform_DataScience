@@ -222,7 +222,7 @@ from typing import List
 from utility.logger_file import Logs
  
  
-logger = Logs
+logger = Logs()
  
  
 try:
@@ -241,13 +241,13 @@ try:
 except Exception as e:
  
     logger.error(f"Initialization failed: {e}")
-    raise
+    raise ValueError(f"Invoice processing failed: {e}")
  
  
  
  
 def document_splitter(text:str) -> List[Document]:
- 
+     
     try:  
         long_doc = [Document(page_content=text)]
         docs=text_splitter.split_documents(long_doc)
@@ -340,7 +340,7 @@ def load_or_create_faiss_index(docs:str,index_path:str) -> str:
  
  
  
-def embeddings_from_pdf(bucket_name:str,blob_names:List[str]) -> str:
+def embeddings_from_gcb(bucket_name:str,blob_names:List[str]) -> str:
     try:
         docs = read_pdf_from_gcs(bucket_name,blob_names)
         print(docs)
