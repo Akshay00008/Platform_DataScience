@@ -99,7 +99,7 @@ def embeddings_from_gcb(bucket_name, blob_names):
                 return f"Error loading existing FAISS index: {e}"
         else:
             try:
-                dim = len(embeddings.embed_query("hello world"))
+                dim = len(embeddings.embed_query(docs))
                 index = faiss.IndexFlatL2(dim)
                 vector_store = FAISS(
                     embedding_function=embeddings,
