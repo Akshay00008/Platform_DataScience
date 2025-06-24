@@ -1,6 +1,7 @@
 import pymongo
 from bson import ObjectId
 from bson.json_util import dumps
+import json
 
 def Bot_Retrieval(chatbot_id, version_id):
     client = pymongo.MongoClient("mongodb://dev:N47309HxFWE2Ehc@35.209.224.122:27017")
@@ -37,6 +38,9 @@ def Bot_Retrieval(chatbot_id, version_id):
     
     return parsed_json
 
+
+    
+
 def website_tag_saving(website_taggers,chatbot_id,version_id):
     client = pymongo.MongoClient("mongodb://dev:N47309HxFWE2Ehc@35.209.224.122:27017")
     db = client["ChatbotDB"]
@@ -56,3 +60,27 @@ def website_tag_saving(website_taggers,chatbot_id,version_id):
 
     print("Tags inserted successfully.")
 
+
+def company_Retrieval():
+    # Connect to the MongoDB client
+    client = pymongo.MongoClient("mongodb://dev:N47309HxFWE2Ehc@35.209.224.122:27017")
+    db = client["ChatbotDB"]
+    collection = db['companies']
+    
+    # Retrieve all documents from the collection
+    documents = list(collection.find())  # This retrieves all documents in the collection
+    
+    print("**************")
+    print(documents)
+    
+    # If no documents are found, return an error message
+    if not documents:
+        return {"error": "No documents found in the collection"}
+    
+    # Use bson.json_util.dumps to serialize ObjectId and other BSON types properly
+    json_data = dumps(documents)  # Converts the list of documents to a JSON string
+    
+    # Optionally, you can convert the JSON string back to a Python dict/list:
+    parsed_json = json.loads(json_data)
+    
+    return parsed_json

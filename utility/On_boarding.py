@@ -11,7 +11,7 @@ from langchain_community.vectorstores import FAISS
 from langchain_openai import OpenAIEmbeddings
 from langgraph.graph import START, StateGraph
 from utility.retrain_bot import fetch_data
-from Databases.mongo import Bot_Retrieval
+from Databases.mongo import Bot_Retrieval, company_Retrieval
 
 # Setup logging
 logging.basicConfig(level=logging.INFO)
@@ -70,6 +70,10 @@ def chatbot(chatbot_id, version_id, prompt, user_id):
         if not Bot_information:
             raise ValueError(f"No bot information found for chatbot_id {chatbot_id} and version_id {version_id}")
 
+        bot_company= company_Retrieval()
+        if not bot_company:
+            raise ValueError(f"No bot company information found ")
+
         # Initialize conversation history if not already present
         if user_id not in converstation_state:
             converstation_state[user_id] = [{'role': 'user', 'content': prompt}]
@@ -81,13 +85,14 @@ def chatbot(chatbot_id, version_id, prompt, user_id):
         purpose = Bot_information[0].get('purpose', "General assistance")
         languages = Bot_information[0].get('supported_languages', ["English"])
         tone_and_style = Bot_information[0].get('tone_style', "Friendly and professional")
+        company_info=bot_company[0].get('bot_company')
         print("Received bot info")
 
         # Avoid adding empty guidelines to the response
         if guidelines.get('guidanceflows') or guidelines.get('handoffscenarios'):
-            llm_response = Personal_chatbot(converstation_history, prompt, languages, purpose, tone_and_style, greeting, guidelines)
+            llm_response = Personal_chatbot(converstation_history, prompt, languages, purpose, tone_and_style, greeting, guidelines,company_info)
         else:
-            llm_response = Personal_chatbot(converstation_history, prompt, languages, purpose, tone_and_style, greeting, None)
+            llm_response = Personal_chatbot(converstation_history, prompt, languages, purpose, tone_and_style, greeting, guidelines,company_info)
 
         converstation_state[user_id].append({'role': 'bot', 'content': llm_response})
 
@@ -98,7 +103,7 @@ def chatbot(chatbot_id, version_id, prompt, user_id):
         return f"An error occurred: {e}"
 
 
-def Personal_chatbot(converstation_history, prompt, languages, purpose, tone_and_style, greeting, guidelines):
+def Personal_chatbot(converstation_history, prompt, languages, purpose, tone_and_style, greeting, guidelines,company_info):
     class State(TypedDict):
         question: str
         context: List[Document]
@@ -133,10 +138,11 @@ def Personal_chatbot(converstation_history, prompt, languages, purpose, tone_and
                     You can communicate fluently in the following languages: {languages}.
                     {greeting} Always keep the conversation context in mind, including the chat history:
                     {converstation_history}
+                    Do not respond to the query or question which is not related to the company : {company_info}
                     You also have access to context derived from document scores:
                     {docs_content}
-                    Maintain a tone and style that aligns with the following guidelines:
-                    {tone_and_style}
+                    Maintain a tone and style that aligns with the following guidelines:{guidelines}
+                     Maintain a tone and style : {tone_and_style}
                     """
                 ),
                 HumanMessage(f"{state['question']}")

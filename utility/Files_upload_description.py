@@ -9,6 +9,7 @@ from langchain.text_splitter import CharacterTextSplitter
 from dotenv import load_dotenv  # Import the dotenv module
 import pymongo
 import json
+from bson import ObjectId
 
 # Setup logging
 logger = logging.getLogger(__name__)
@@ -117,6 +118,9 @@ def read_pdf_from_gcs(bucket_name, blob_names, chatbot_id, version_id):
             logger.info(f"Generated description: {description}")
             logger.info(f"Generated keywords: {keywords}")
             logger.info(f"Generated tags: {tags}")
+
+            chatbot_oid = ObjectId(chatbot_id)
+            version_oid = ObjectId(version_id)
 
             # Update MongoDB collection with description, keywords, and tags
             collection.update_one(
