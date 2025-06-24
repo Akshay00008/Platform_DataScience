@@ -97,8 +97,10 @@ def read_pdf_from_gcs(bucket_name, blob_names, chatbot_id, version_id):
             
             pdf_text = '. '.join(data)
 
-            # Generate Description, Keywords, and Tags using OpenAI
+            # Generate Description, Keywords, and Tags using OpenAIs
             file_des = generate_openai_output(pdf_text)
+
+            print(file_des)
 
             description = file_des.get('description', 'No description')
             keywords = file_des.get('keywords', [])
