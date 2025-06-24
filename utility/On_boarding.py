@@ -168,7 +168,7 @@ def Personal_chatbot(converstation_history, prompt, languages, purpose, tone_and
 
 
 
-            print("context:", combined_docs)
+            # print("context:", combined_docs)
             return {"context": combined_docs}
 
         except Exception as e:
