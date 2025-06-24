@@ -111,8 +111,8 @@ def Personal_chatbot(converstation_history, prompt, languages, purpose, tone_and
    
     def retrieve(state: State):
         try:
-            faiss_index_dir = "C:\\Users\\hp\\Desktop\\Platform_16-05-2025\\faiss_indexes"  # Adjust for your environment
-            # faiss_index_dir = "/home/bramhesh_srivastav/Platform_DataScience/faiss_indexes"  # For Linux/Mac
+            # faiss_index_dir = "C:\\Users\\hp\\Desktop\\Platform_16-05-2025\\faiss_indexes"  # Adjust for your environment
+            faiss_index_dir = "/home/bramhesh_srivastav/Platform_DataScience/faiss_indexes"  # For Linux/Mac
             
             # Construct the unique filename for the FAISS index based on chatbot_id and version_id
     # index_filename = f"{chatbot_id}_{version_id}_faiss_index_website"

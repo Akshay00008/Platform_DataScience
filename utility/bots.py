@@ -44,7 +44,7 @@ collection = db['faqs']
 def load_faiss_index(chatbot_id, version_id, target_vector):
     
     # Define the base path where FAISS indexes are stored
-    faiss_index_dir = "C:\\Users\\hp\\Desktop\\Platform_16-05-2025\\faiss_indexes" #"/home/bramhesh_srivastav/Platform_DataScience/faiss_indexes"
+    faiss_index_dir = "/home/bramhesh_srivastav/Platform_DataScience/faiss_indexes"
     
     # Create the unique index filename based on chatbot_id and version_id
     faiss_index_filename = f"{chatbot_id}_{version_id}_faiss_index"
