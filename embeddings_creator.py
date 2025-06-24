@@ -347,7 +347,7 @@ def embeddings_from_gcb(bucket_name:str,blob_names:List[str]) -> str:
         if not docs:
             logger.warning("No documents were extracted from the PDFs.")
             return "No documents extracted."
-        reply=load_or_create_faiss_index(docs=docs,index_path="pdf_faiss")
+        reply=load_or_create_faiss_index(docs=docs,index_path="faiss_index")
         return reply
     except Exception as e:
         logger.error(f"Error in embeddings_from_gcb: {e}")
