@@ -113,19 +113,31 @@ def Personal_chatbot(converstation_history, prompt, languages, purpose, tone_and
         try:
             # faiss_index_dir = "C:\\Users\\hp\\Desktop\\Platform_16-05-2025\\faiss_indexes"  # Adjust for your environment
             faiss_index_dir = "/home/bramhesh_srivastav/Platform_DataScience/faiss_indexes"  # For Linux/Mac
-            
-            # Construct the unique filename for the FAISS index based on chatbot_id and version_id
-    # index_filename = f"{chatbot_id}_{version_id}_faiss_index_website"
-            
-                    # Construct the full path to the FAISS index
+
+            # Construct unique filenames for both FAISS indexes
             faiss_index_filename = f"{chatbot_id}_{version_id}_faiss_index"
             faiss_index_website = f"{chatbot_id}_{version_id}_faiss_index_website"
 
-            faiss_path_1 = os.path.join(faiss_index_dir, faiss_index_filename)    
+            # Construct the full paths to the FAISS index files
+            faiss_path_1 = os.path.join(faiss_index_dir, faiss_index_filename)
             faiss_path_2 = os.path.join(faiss_index_dir, faiss_index_website)
+
+            # Check if the first FAISS index exists
+            if not os.path.exists(faiss_path_1):
+                raise FileNotFoundError(f"FAISS index not found at {faiss_path_1}")
+
+            # Check if the second FAISS index exists
+            if not os.path.exists(faiss_path_2):
+                raise FileNotFoundError(f"FAISS index not found at {faiss_path_2}")
+
             # Load both FAISS indexes
+            logger.info(f"Loading FAISS index from {faiss_path_1}")
             new_vector_store = FAISS.load_local(faiss_path_1, embeddings, allow_dangerous_deserialization=True)
+
+            logger.info(f"Loading FAISS index from {faiss_path_2}")
             new_vector_store_1 = FAISS.load_local(faiss_path_2, embeddings, allow_dangerous_deserialization=True)
+
+            logger.info("FAISS indexes loaded successfully.")
 
             # Retrieve documents from both FAISS indices
             retrieved_docs = new_vector_store.similarity_search(state['question'])
