@@ -308,7 +308,7 @@ def faqs_endpoint():
     generated_faq_count = data.get("generated_faq_count", 50)
     vector= data.get('target_vector')
 
-    faisll_load=bots.load_faiss_index(vector)
+    faisll_load=bots.load_faiss_index(chatbot_id,version_id,vector)
     print(faisll_load)
     
 
