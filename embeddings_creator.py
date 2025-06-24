@@ -283,7 +283,8 @@ def read_pdf_from_gcs(bucket_name: str, blob_names: List[str]) -> List[str]:
 
 def load_or_create_faiss_index(docs: List[str], chatbot_id: str, version_id: str) -> str:
     try:
-        index_dir = "faiss_indexes"  # Directory to store FAISS indexes
+        index_dir = "/home/bramhesh_srivastav/Platform_DataScience/faiss_indexes"  # Directory to store FAISS indexes
+        
         os.makedirs(index_dir, exist_ok=True)
 
         # Use chatbot_id and version_id to create a unique index filename
