@@ -143,6 +143,8 @@ def Personal_chatbot(converstation_history, prompt, languages, purpose, tone_and
             retrieved_docs = new_vector_store.similarity_search(state['question'])
             retrieved_docs_2 = new_vector_store_1.similarity_search(state['question'])
 
+            logger.info("retrieved_docs indexes completed successfully.")
+
             # Combine results from both indices, ensuring no duplicates
             combined_docs = list(set(retrieved_docs + retrieved_docs_2))  # Use set to avoid duplicates
 
