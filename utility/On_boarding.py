@@ -145,12 +145,29 @@ def Personal_chatbot(converstation_history, prompt, languages, purpose, tone_and
 
             logger.info("retrieved_docs indexes completed successfully.")
 
-            # Combine results from both indices, ensuring no duplicates
-            combined_docs = list(set(retrieved_docs + retrieved_docs_2))  # Use set to avoid duplicates
-            logger.info("combined_docs returned completed successfully.")
+            # Combine results from both indices, ensuring no duplicates based on document ID
+            combined_docs = []
 
-            print("context:", combined_docs)
-            return {"context": combined_docs}
+            # Using a set to track unique document IDs (or another unique identifier)
+            seen_docs = set()
+
+            # Add documents from the first index
+            for doc in retrieved_docs:
+                # Assuming 'doc.id' is unique or 'doc.content' for uniqueness
+                if doc.id not in seen_docs:
+                    combined_docs.append(doc)
+                    seen_docs.add(doc.id)  # Use doc.id or another identifier to ensure uniqueness
+
+            # Add documents from the second index
+            for doc in retrieved_docs_2:
+                if doc.id not in seen_docs:
+                    combined_docs.append(doc)
+                    seen_docs.add(doc.id)
+
+            logger.info("combined_docs returned successfully.")
+
+            return combined_docs  # Return the combined documents
+
 
         except Exception as e:
             logger.error(f"Error in document retrieval: {e}")
