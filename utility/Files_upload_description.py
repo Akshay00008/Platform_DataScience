@@ -8,6 +8,7 @@ from itertools import chain
 from langchain.text_splitter import CharacterTextSplitter
 from dotenv import load_dotenv  # Import the dotenv module
 import pymongo
+import json
 
 # Setup logging
 logger = logging.getLogger(__name__)
@@ -99,6 +100,8 @@ def read_pdf_from_gcs(bucket_name, blob_names, chatbot_id, version_id):
 
             # Generate Description, Keywords, and Tags using OpenAIs
             file_des = generate_openai_output(pdf_text)
+
+            file_des = json.loads(file_des)
 
             print(file_des)
 
