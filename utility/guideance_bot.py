@@ -15,7 +15,7 @@ client = OpenAI(api_key=openai_api_key)
 embedding_model = OpenAIEmbeddings(model="text-embedding-3-large")
 
 # FAISS vector store path
-faiss_path = r"/home/bramhesh_srivastav/Platform_DataScience/website_faiss_index"
+
 
 # MongoDB connection
 mongo_client = pymongo.MongoClient("mongodb://dev:N47309HxFWE2Ehc@35.209.224.122:27017")
@@ -23,18 +23,29 @@ db = mongo_client["ChatbotDB"]
 guidance_collection = db["guidanceflows"]
 
 # Function to load FAISS index fresh every time
-def load_faiss_index():
+def load_faiss_index(chatbot_id,version_id,):
     """
     Load the FAISS index fresh from disk each time it's called.
+
     """
+    faiss_index_dir = "/home/bramhesh_srivastav/Platform_DataScience/faiss_indexes"
+    
+    # Create the unique index filename based on chatbot_id and version_id
+    # faiss_index_filename = f"{chatbot_id}_{version_id}_faiss_index"
+    faiss_index_website = f"{chatbot_id}_{version_id}_faiss_index_website"
+
+    faiss_path = os.path.join(faiss_index_dir, faiss_index_website)
+
+    # faiss_path = r"/home/bramhesh_srivastav/Platform_DataScience/website_faiss_index"
+    
     return FAISS.load_local(faiss_path, embedding_model, allow_dangerous_deserialization=True)
 
 # Fetch content from vector store
-def fetch_vector_content(query="overview", k=25):
+def fetch_vector_content(chatbot_id,version_id,query="overview", k=25):
     """
     Fetch the vector content by performing a similarity search with a fresh FAISS index.
     """
-    vectorstore = load_faiss_index()  # Reload FAISS index each time
+    vectorstore = load_faiss_index(chatbot_id,version_id,)  # Reload FAISS index each time
     results = vectorstore.similarity_search(query, k=k)
     return "\n\n".join([doc.page_content for doc in results])
 
@@ -129,7 +140,7 @@ def save_guidance_to_mongo(guidance_docs):
 
 # Main trigger
 def run_guidance_pipeline(chatbot_id, version_id, query="overview"):
-    content = fetch_vector_content(query=query)
+    content = fetch_vector_content(chatbot_id,version_id,  query=query)
     structured_text = generate_guidance(content)
     structured_docs = parse_guidance(structured_text, chatbot_id, version_id)
     save_guidance_to_mongo(structured_docs)
