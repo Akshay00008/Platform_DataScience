@@ -147,7 +147,9 @@ def Personal_chatbot(converstation_history, prompt, languages, purpose, tone_and
 
             # Combine results from both indices, ensuring no duplicates
             combined_docs = list(set(retrieved_docs + retrieved_docs_2))  # Use set to avoid duplicates
+            logger.info("combined_docs returned completed successfully.")
 
+            print("context:", combined_docs)
             return {"context": combined_docs}
 
         except Exception as e:
