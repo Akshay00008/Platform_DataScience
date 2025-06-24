@@ -234,6 +234,7 @@ try:
         logger.error("GOOGLE_APPLICATION_CREDENTIALS environment variable is not set.")
 
     embeddings = OpenAIEmbeddings(model="text-embedding-3-large")
+    text_splitter = SemanticChunker(OpenAIEmbeddings(), number_of_chunks=1000)
 
 except Exception as e:
     logger.error(f"Initialization failed: {e}")
