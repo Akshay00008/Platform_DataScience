@@ -166,8 +166,10 @@ def Personal_chatbot(converstation_history, prompt, languages, purpose, tone_and
 
             logger.info("combined_docs returned successfully.")
 
-            return combined_docs  # Return the combined documents
 
+
+            print("context:", combined_docs)
+            return {"context": combined_docs}
 
         except Exception as e:
             logger.error(f"Error in document retrieval: {e}")
