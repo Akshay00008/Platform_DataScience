@@ -105,7 +105,7 @@ def process_scraping(url, chatbot_id, version_id):
         website_tag_saving(website_taggers, chatbot_id, version_id)
         print("Tags created and stored in MongoDB")
 
-        embeddings_from_website_content(json_data)
+        embeddings_from_website_content(json_data, chatbot_id, version_id)
         print("Website vector created")
 
         loggs.info(f"Tags and vectors generated for URL: {url}")
@@ -117,10 +117,10 @@ def process_scraping(url, chatbot_id, version_id):
         loggs.info(f"Error during background scraping: {str(e)}")
 
 
-def background_embedding_task(bucket, blobs):
+def background_embedding_task(bucket, blobs,chatbot_id,version_id):
     try:
         loggs.info(f"Started embedding for bucket: {bucket}, blobs: {blobs}")
-        embeddings_from_gcb(bucket_name=bucket, blob_names=blobs)
+        embeddings_from_gcb(chatbot_id,version_id,bucket_name=bucket, blob_names=blobs)
         loggs.info(f"Completed embedding generation for blobs in bucket: {bucket}")
     except Exception as e:
         loggs.info(f"Error during embedding generation: {str(e)}")
@@ -236,7 +236,7 @@ def vector_embeddings():
         print(blob_names)
         with lock:
             active_threads += 1
-        Thread(target=background_embedding_task, args=(bucket_name, blob_names)).start()
+        Thread(target=background_embedding_task, args=(bucket_name, blob_names,chatbot_id,version_id)).start()
         # result=bucket_files(bucket_name, blob_names,chatbot_id,version_id)
         # Thread(target=bucket_files,args=(bucket_name, blob_names,chatbot_id,version_id)).start()
         result=description_from_gcs(bucket_name, blob_names,chatbot_id,version_id)

@@ -26,20 +26,33 @@ collection = db['faqs']
 # faiss_path_1 = r"/home/bramhesh_srivastav/Platform_DataScience/faiss_index"#C:\\Users\\hp\\Desktop\\Platform_16-05-2025\\Platform_DataScience\\faiss_index"#"/home/bramhesh_srivastav/Platform_DataScience/faiss_index"
 # faiss_path_2 = r"/home/bramhesh_srivastav/Platform_DataScience/website_faiss_index"#"C:\Users\hp\Desktop\Platform_16-05-2025\Platform_DataScience\website_faiss_index"#"/home/bramhesh_srivastav/Platform_DataScience/website_faiss_index"
 
-def load_faiss_index(target_vector):
+# def load_faiss_index(target_vector):
 
-    faiss_path_1 = r"/home/bramhesh_srivastav/Platform_DataScience/faiss_index"#C:\\Users\\hp\\Desktop\\Platform_16-05-2025\\Platform_DataScience\\faiss_index"#"/home/bramhesh_srivastav/Platform_DataScience/faiss_index"
-    faiss_path_2 = r"/home/bramhesh_srivastav/Platform_DataScience/website_faiss_index"#"C:\Users\hp\Desktop\Platform_16-05-2025\Platform_DataScience\website_faiss_index"#"/home/bramhesh_srivastav/Platform_DataScience/website_faiss_index"
-    """
-    This function loads the FAISS index fresh every time it is called.
+#     faiss_path_1 = r"/home/bramhesh_srivastav/Platform_DataScience/faiss_index"#C:\\Users\\hp\\Desktop\\Platform_16-05-2025\\Platform_DataScience\\faiss_index"#"/home/bramhesh_srivastav/Platform_DataScience/faiss_index"
+#     faiss_path_2 = r"/home/bramhesh_srivastav/Platform_DataScience/website_faiss_index"#"C:\Users\hp\Desktop\Platform_16-05-2025\Platform_DataScience\website_faiss_index"#"/home/bramhesh_srivastav/Platform_DataScience/website_faiss_index"
+#     """
+#     This function loads the FAISS index fresh every time it is called.
     
-    Parameters:
-        vector (str): The type of vector ('faq' or 'website') to determine which FAISS index to load.
-        embedding_model: The model used for embeddings, passed as an argument.
+#     Parameters:
+#         vector (str): The type of vector ('faq' or 'website') to determine which FAISS index to load.
+#         embedding_model: The model used for embeddings, passed as an argument.
 
-    Returns:
-        FAISS index: Loaded FAISS index for the corresponding vector type.
-    """
+#     Returns:
+#         FAISS index: Loaded FAISS index for the corresponding vector type.
+    # """
+
+def load_faiss_index(chatbot_id, version_id, target_vector):
+    
+    # Define the base path where FAISS indexes are stored
+    faiss_index_dir = "C:\\Users\\hp\\Desktop\\Platform_16-05-2025\\faiss_indexes" #"/home/bramhesh_srivastav/Platform_DataScience/faiss_indexes"
+    
+    # Create the unique index filename based on chatbot_id and version_id
+    faiss_index_filename = f"{chatbot_id}_{version_id}_faiss_index"
+    faiss_index_website = f"{chatbot_id}_{version_id}_faiss_index_website"
+    
+    # Construct the full path to the FAISS index
+    faiss_path_1 = os.path.join(faiss_index_dir, faiss_index_filename)    
+    faiss_path_2 = os.path.join(faiss_index_dir, faiss_index_website) 
     try:
         # Define the FAISS index path based on the vector type
         if 'faq' in target_vector:

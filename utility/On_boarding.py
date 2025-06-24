@@ -90,9 +90,9 @@ def chatbot(chatbot_id, version_id, prompt, user_id):
 
         # Avoid adding empty guidelines to the response
         if guidelines.get('guidanceflows') or guidelines.get('handoffscenarios'):
-            llm_response = Personal_chatbot(converstation_history, prompt, languages, purpose, tone_and_style, greeting, guidelines,company_info)
+            llm_response = Personal_chatbot(converstation_history, prompt, languages, purpose, tone_and_style, greeting, guidelines,company_info,chatbot_id,version_id)
         else:
-            llm_response = Personal_chatbot(converstation_history, prompt, languages, purpose, tone_and_style, greeting, guidelines,company_info)
+            llm_response = Personal_chatbot(converstation_history, prompt, languages, purpose, tone_and_style, greeting, guidelines,company_info,chatbot_id,version_id)
 
         converstation_state[user_id].append({'role': 'bot', 'content': llm_response})
 
@@ -103,17 +103,29 @@ def chatbot(chatbot_id, version_id, prompt, user_id):
         return f"An error occurred: {e}"
 
 
-def Personal_chatbot(converstation_history, prompt, languages, purpose, tone_and_style, greeting, guidelines,company_info):
+def Personal_chatbot(converstation_history, prompt, languages, purpose, tone_and_style, greeting, guidelines,company_info,chatbot_id,version_id):
     class State(TypedDict):
         question: str
         context: List[Document]
         answer: str
-
+   
     def retrieve(state: State):
         try:
+            faiss_index_dir = "C:\\Users\\hp\\Desktop\\Platform_16-05-2025\\faiss_indexes"  # Adjust for your environment
+            # faiss_index_dir = "/home/bramhesh_srivastav/Platform_DataScience/faiss_indexes"  # For Linux/Mac
+            
+            # Construct the unique filename for the FAISS index based on chatbot_id and version_id
+    # index_filename = f"{chatbot_id}_{version_id}_faiss_index_website"
+            
+                    # Construct the full path to the FAISS index
+            faiss_index_filename = f"{chatbot_id}_{version_id}_faiss_index"
+            faiss_index_website = f"{chatbot_id}_{version_id}_faiss_index_website"
+
+            faiss_path_1 = os.path.join(faiss_index_dir, faiss_index_filename)    
+            faiss_path_2 = os.path.join(faiss_index_dir, faiss_index_website)
             # Load both FAISS indexes
-            new_vector_store = FAISS.load_local("website_faiss_index", embeddings, allow_dangerous_deserialization=True)
-            new_vector_store_1 = FAISS.load_local("faiss_index", embeddings, allow_dangerous_deserialization=True)
+            new_vector_store = FAISS.load_local(faiss_path_1, embeddings, allow_dangerous_deserialization=True)
+            new_vector_store_1 = FAISS.load_local(faiss_path_2, embeddings, allow_dangerous_deserialization=True)
 
             # Retrieve documents from both FAISS indices
             retrieved_docs = new_vector_store.similarity_search(state['question'])
