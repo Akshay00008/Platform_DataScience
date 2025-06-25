@@ -284,8 +284,14 @@ def llm_endpoint():
         
         elif query == "Live_agent_trigger" :
             return {"result" : "Do you want to connect with a Live agent","Buttons" :["Yes Would Like To connect", "No thanks for the help"]}
+        
+        
 
         result = chatbot(chatbot_id, version_id, query, user_id)
+        if "Let's get you connected to one of our live agents so they can assist you further. Would it be okay if I connect you now?" in result :
+                return {"result":result,"Buttons" :["Yes, please connect me.", "No thank you, I am all set."]}
+        if "Let's get you connected to one of our live agents so they can assist you further. Would it be okay if I connect you now?"in result:
+                return {"result":result,"Buttons" :["Yes, please connect me.", "No thank you, I am all set."]}  
         loggs.info(f"✅ LLM query processed for chatbot_id={chatbot_id}, user_id={user_id}")
         return jsonify({"result": result})
     except Exception as e:
