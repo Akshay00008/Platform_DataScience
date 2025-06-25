@@ -277,8 +277,13 @@ def llm_endpoint():
         chatbot_id = data.get("chatbot_id")
         user_id = data.get("con_id")
 
+        
+        
         if not all([query, version_id, chatbot_id, user_id]):
             return jsonify({"error": "Missing required fields"}), 400
+        
+        elif query == "Live_agent_trigger" :
+            return {"result" : "Do you want to connect with a Live agent","Buttons" :["Yes Would Like To connect", "No thanks for the help"]}
 
         result = chatbot(chatbot_id, version_id, query, user_id)
         loggs.info(f"✅ LLM query processed for chatbot_id={chatbot_id}, user_id={user_id}")

@@ -108,6 +108,8 @@ def Personal_chatbot(converstation_history, prompt, languages, purpose, tone_and
         question: str
         context: List[Document]
         answer: str
+
+        
    
     def retrieve(state: State):
         try:
@@ -189,12 +191,24 @@ def Personal_chatbot(converstation_history, prompt, languages, purpose, tone_and
                     You also have access to context derived from document scores:
                     {docs_content}
                     Maintain a tone and style that aligns with the following guidelines:{guidelines}
-                     Maintain a tone and style : {tone_and_style}
-                    """
+                    Maintain a tone and style : {tone_and_style}
+                    --When user asks about "delivery status" or "Order status" or 
+                    --"Warranty and Service Requests or Order and Shipping Queries" or 
+                    --"Specialized Product Configurations[example : Schematic diagrams or wiring diagram]" or 
+                    --"Payment or Billing Issues" or
+                    --"if user says not working " or 
+                    --"user says These words ["fire", "melt", "burned", "melted", "burned up] and add synonyms of these or related word's" or 
+                    --" If user asks about the new product or product not present in your list" or
+                    --" if you find the words like [price, pricing,burned up] word in user query " or 
+                    --"When the user explicitly asks to speak with a live agent or mentions they are unable to resolve their issue with the chatbot alone " 
+                    -- for the above mention cases please staright away say or responsd with the following message "Let's get you connected to one of our live agents so they can assist you further. Would it be okay if I connect you now?"
+                     """
                 ),
                 HumanMessage(f"{state['question']}")
             ]
             response = llm.invoke(messages)
+
+            
             return {"answer": response.content}
 
         except Exception as e:
