@@ -124,7 +124,7 @@ def read_pdf_from_gcs(bucket_name, blob_names, chatbot_id, version_id):
 
             # Update MongoDB collection with description, keywords, and tags
             collection.update_one(
-                {"chatbot_id": chatbot_oid, "version_id": version_oid, "display_name" : blob_name},
+                {"chatbot_id": chatbot_oid, "version_id": version_oid, "file_name" : blob_name},
                 {
                     "$set": {
                         "description": description,
