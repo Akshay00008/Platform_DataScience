@@ -38,7 +38,7 @@ text_splitter = CharacterTextSplitter(chunk_size=1000, chunk_overlap=200)
 
 # Function to generate description, keywords, and tags using OpenAI API
 def generate_openai_output(text):
-    prompt = f"""Please read the following text and provide the response in JSON format:
+    prompt = f"""Please read the following text or pdf data and write a description , keywords and tags as  given below provide the response in JSON format:
     {{
         "description": "10-15 word description of the content",
         "keywords": ["5 important keywords"],
