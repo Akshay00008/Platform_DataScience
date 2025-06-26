@@ -64,7 +64,7 @@ def extract_and_store_descriptions(playlist_url, chatbot_id, version_id,inserted
             # Prepare video data to insert into MongoDB
             video_data = {
                 'title': title,
-                'url': video_url,
+                'video_url': video_url,
                 'description': description,
                 'chatbot_id': ObjectId(chatbot_id),
                 'version_id': ObjectId(version_id),
