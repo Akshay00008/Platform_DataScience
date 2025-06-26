@@ -59,7 +59,8 @@ def extract_and_store_descriptions(playlist_url, chatbot_id, version_id,inserted
             video_snippet = video_info['items'][0]['snippet']
             title = video_snippet.get('title', 'No title available')
             description = video_snippet.get('description', 'No description available')
-            keywords = video_snippet.get('tags', 'No keywords available')
+            keywords = video_snippet.get('keywords', 'No keywords available')
+            tags=video_snippet.get('tags', 'No keywords available')
 
             # Prepare video data to insert into MongoDB
             video_data = {
@@ -68,7 +69,8 @@ def extract_and_store_descriptions(playlist_url, chatbot_id, version_id,inserted
                 'description': description,
                 'chatbot_id': ObjectId(chatbot_id),
                 'version_id': ObjectId(version_id),
-                'keywords': keywords
+                'keywords': keywords,
+                'tags' : tags
             }
 
             # Insert video data into MongoDB collection
