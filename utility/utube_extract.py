@@ -3,32 +3,39 @@ from dotenv import load_dotenv
 import os
 from pymongo import MongoClient, errors
 from bson import ObjectId
+import re
 
 # Load environment variables from .env file
 load_dotenv()
 
-
-
+# MongoDB connection
 client = MongoClient("mongodb://dev:N47309HxFWE2Ehc@35.209.224.122:27017")  # Update connection string if needed
 db = client['ChatbotDB']  # DB name
-collection = db['youtube_data'] 
+collection = db['youtube_data']  # Collection name
 
 # Initialize MongoDB connection
-
-
-# Get chatbot and version IDs
 chatbot_id = "68418a5ea750b0a21067158a"  # Replace with actual chatbot ID
 version_id = "68418a5ea750b0a21067158e"  # Replace with actual version ID
-
-inserted_count = 0  # Keep track of successfully inserted records
 
 # Load the API key from the environment variables
 API_KEY = os.getenv('YOUTUBE_API_KEY')
 
-def get_video_details_from_playlist(playlist_id):
+def extract_playlist_id_from_url(playlist_url):
+    """
+    Extract the playlist ID from the URL and remove any unnecessary query parameters.
+    """
+    match = re.match(r'https://www\.youtube\.com/playlist\?list=([a-zA-Z0-9_-]+)', playlist_url)
+    if match:
+        return match.group(1)  # Returns only the playlist ID
+    else:
+        raise ValueError("Invalid playlist URL")
+
+def get_video_details_from_playlist(playlist_url, inserted_count=0):
     youtube = build('youtube', 'v3', developerKey=API_KEY)
 
-    video_details = []
+    # Get the playlist ID directly from the URL
+    playlist_id = playlist_url.split("list=")[1].split("&")[0]  # Extract playlist ID from the URL
+
     next_page_token = None
 
     while True:
@@ -83,28 +90,16 @@ def get_video_details_from_playlist(playlist_id):
             break
 
     print(f"Successfully inserted {inserted_count} video(s) into the database.")
-
-def get_uploads_playlist_id(channel_id):
-    youtube = build('youtube', 'v3', developerKey=API_KEY)
-
-    # Fetch the uploads playlist ID for a channel
-    response = youtube.channels().list(
-        part='contentDetails',
-        id=channel_id
-    ).execute()
-
-    uploads_playlist_id = response['items'][0]['contentDetails']['relatedPlaylists']['uploads']
-    return uploads_playlist_id
+    return inserted_count
 
 # === Usage ===
 
-# Option 1: Playlist URL
-playlist_url = "https://youtube.com/playlist?list=PLclx3rOLTg__Cwk-edPW2qELuI2kM5DRQ&si=gyOZwGZKVEF3WEqx"  # Replace with your playlist URL
-playlist_id = playlist_url.split("list=")[1]  # Extract playlist ID from the URL
-get_video_details_from_playlist(playlist_id)
+# Option 1: Playlist URL (no need to extract ID manually)
+playlist_url = "https://youtube.com/playlist?list=PLmXKhU9FNesTpQNP_OpXN7WaPwGx7NWsq&si=ejz5QQokZaEVbRTV"  # Replace with your playlist URL
+inserted_count = get_video_details_from_playlist(playlist_url)
 
 # Option 2: Channel URL (use channel ID like 'UC7DdEm33SyaTDtWYGO2CwdA')
 # channel_url = "https://www.youtube.com/channel/UC7DdEm33SyaTDtWYGO2CwdA"  # Replace with your channel URL
 # channel_id = channel_url.split("channel/")[1]  # Extract channel ID from the URL
 # uploads_playlist_id = get_uploads_playlist_id(channel_id)
-# get_video_details_from_playlist(uploads_playlist_id)
+# inserted_count = get_video_details_from_playlist(uploads_playlist_id, inserted_count)
