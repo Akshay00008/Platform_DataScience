@@ -1,5 +1,6 @@
 from pymongo import MongoClient, errors
 import yt_dlp
+from bson import ObjectId
 
 # Configure your MongoDB client and database
 client = MongoClient("mongodb://dev:N47309HxFWE2Ehc@35.209.224.122:27017")  # Update connection string if needed
@@ -36,12 +37,15 @@ def extract_and_store_descriptions(playlist_url, chatbot_id, version_id):
             first_two_lines = description_lines[:2]
             short_description = ' '.join(first_two_lines).strip()
 
+            chatbot_oid = ObjectId(chatbot_id)
+            version_oid = ObjectId(version_id)
+
             video_data = {
                 'title': video_info.get('title'),
                 'url': video_url,
                 'description': short_description,
-                'chatbot_id': chatbot_id,
-                'version_id': version_id
+                'chatbot_id': chatbot_oid,
+                'version_id': version_oid
             }
 
             try:
