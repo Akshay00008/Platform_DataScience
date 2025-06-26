@@ -16,25 +16,36 @@ db = mongo_client["ChatbotDB"]
 collection = db['handoffscenarios']
 
 # FAISS and Embedding Model Setup
-faiss_path = r"/home/bramhesh_srivastav/Platform_DataScience/website_faiss_index"
+# faiss_path = r"/home/bramhesh_srivastav/Platform_DataScience/website_faiss_index"
 embedding_model = OpenAIEmbeddings(model="text-embedding-3-large")
 
 # OpenAI Client Setup
 client = OpenAI(api_key=openai_api_key)
 
 # Function to Load FAISS Index Fresh Every Time
-def load_faiss_index():
+def load_faiss_index(chatbot_id,version_id):
     """
     Load the FAISS index fresh from disk each time it's called.
+
     """
+    faiss_index_dir = "/home/bramhesh_srivastav/Platform_DataScience/faiss_indexes"
+    
+    # Create the unique index filename based on chatbot_id and version_id
+    # faiss_index_filename = f"{chatbot_id}_{version_id}_faiss_index"
+    faiss_index_website = f"{chatbot_id}_{version_id}_faiss_index_website"
+
+    faiss_path = os.path.join(faiss_index_dir, faiss_index_website)
+
+    # faiss_path = r"/home/bramhesh_srivastav/Platform_DataScience/website_faiss_index"
+    
     return FAISS.load_local(faiss_path, embedding_model, allow_dangerous_deserialization=True)
 
 # Function to Fetch Content from FAISS
-def search_vector_context(query, k=30):
+def search_vector_context(chatbot_id,version_id,query, k=30):
     """
     Fetch the vector content by performing a similarity search with a fresh FAISS index.
     """
-    vectorstore = load_faiss_index()  # Reload FAISS index each time
+    vectorstore = load_faiss_index(chatbot_id,version_id)  # Reload FAISS index each time
     results = vectorstore.similarity_search(query, k=k)
     return "\n\n".join([doc.page_content for doc in results])
 
@@ -43,7 +54,7 @@ def generate_handoff_guidance(query, chatbot_id, version_id):
     """
     Generate structured handoff guidance using GPT-4o based on the query and context.
     """
-    context = search_vector_context(query)
+    context = search_vector_context(chatbot_id,version_id,query)
 
     prompt = f"""
 Use the following website content to explore the chatbot's knowledge base.
