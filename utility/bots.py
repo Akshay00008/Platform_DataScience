@@ -3,10 +3,11 @@ from dotenv import load_dotenv
 import pymongo
 import re
 from bson import ObjectId
-
+import logging
 from langchain_community.vectorstores import FAISS
 from langchain_openai import OpenAIEmbeddings
 from openai import OpenAI
+import json
 
 # Load env variables
 load_dotenv()
@@ -20,7 +21,7 @@ embedding_model = OpenAIEmbeddings(model="text-embedding-3-large")
 
 # MongoDB setup
 mongo_client = pymongo.MongoClient("mongodb://dev:N47309HxFWE2Ehc@35.209.224.122:27017")
-db = mongo_client["ChatbotDB"]
+db = mongo_client["ChatbotDB-DEV"]
 collection = db['faqs']
 
 # faiss_path_1 = r"/home/bramhesh_srivastav/Platform_DataScience/faiss_index"#C:\\Users\\hp\\Desktop\\Platform_16-05-2025\\Platform_DataScience\\faiss_index"#"/home/bramhesh_srivastav/Platform_DataScience/faiss_index"
@@ -44,7 +45,7 @@ collection = db['faqs']
 def load_faiss_index(chatbot_id, version_id, target_vector):
     
     # Define the base path where FAISS indexes are stored
-    faiss_index_dir = "/home/bramhesh_srivastav/Platform_DataScience/faiss_indexes"
+    faiss_index_dir = "/home/bramhesh_srivastav/platformdevelopment/faiss_indexes"
     
     # Create the unique index filename based on chatbot_id and version_id
     faiss_index_filename = f"{chatbot_id}_{version_id}_faiss_index"
@@ -53,12 +54,16 @@ def load_faiss_index(chatbot_id, version_id, target_vector):
     # Construct the full path to the FAISS index
     faiss_path_1 = os.path.join(faiss_index_dir, faiss_index_filename)    
     faiss_path_2 = os.path.join(faiss_index_dir, faiss_index_website) 
+
+    
     try:
         # Define the FAISS index path based on the vector type
         if 'faq' in target_vector:
                 faiss_path = faiss_path_1
+                print(f"Loading FAISS index from: {faiss_path}")
         elif 'website' in target_vector:
             faiss_path = faiss_path_2
+            print(f"Loading FAISS index from: {faiss_path}")
         else:
             raise ValueError("Invalid vector type. Please use 'faq' or 'website'.")
 
@@ -184,7 +189,7 @@ def save_faqs_to_mongo(faq_list, chatbot_id, version_id):
         print("Invalid ObjectId:", e)
         return 0
 
-    for faq in faq_list:
+    for i, faq in enumerate(faq_list, start=1):
         faq["chatbot_id"] = chatbot_oid
         faq["version_id"] = version_oid
         faq["is_enabled"] = False
@@ -195,3 +200,123 @@ def save_faqs_to_mongo(faq_list, chatbot_id, version_id):
     result = collection.insert_many(faq_list)
     print(f"Inserted {len(result.inserted_ids)} FAQs into MongoDB.")
     return len(result.inserted_ids)
+
+
+    
+
+import json
+import re
+import logging
+from bson import ObjectId
+from pymongo import MongoClient
+
+def generate_tags_and_buckets_from_json(chunks, chatbot_id, version_id,url, target_count=50):
+    # Join the first 30 chunks of content to form the input for the prompt
+    joined_chunks = "\n\n".join(chunks[:30])
+
+    collection = db['catelogue']
+    chatbot_oid = ObjectId(chatbot_id)
+    version_oid = ObjectId(version_id)
+
+    # Construct the Langchain prompt template with content from FAISS
+    prompt = f"""
+    I have the following content extracted from a webpage:
+
+    {joined_chunks}
+
+    Please generate relevant tags based on this content, categorizing them into appropriate buckets. The tags should describe key topics, products, services, or concepts mentioned on the page, and each tag should be categorized into a relevant bucket. Example buckets could be 'Products', 'Applications', 'Services', 'Industries', 'Solutions', 'Others', etc.
+
+    The output should be in the following JSON format:
+    {{
+      "Catalogue Name 1": {{
+        "Name 1": "Description of the concept, product, service, or industry.",
+        "Name 2": "Description of the concept, product, service, or industry."
+      }},
+      "Catalogue Name 2": {{
+        "Name 1": "Description of the concept, product, service, or industry.",
+        "Name 2": "Description of the concept, product, service, or industry."
+      }}
+    }}
+
+    Here is an example format of the JSON output:
+    {{
+      "Industries": {{
+        "Semiconductor": "The semiconductor industry involves the design and fabrication of microchips used in various devices.",
+        "Surface Finishing": "Surface finishing refers to processes that improve the appearance, durability, and wear resistance of materials."
+      }},
+      "Products": {{
+        "XYZ Product": "A high-performance product designed to meet the needs of modern manufacturing."
+      }},
+      "Solutions": {{
+        "Cloud-based Solution": "A scalable solution that enables businesses to migrate their operations to the cloud."
+      }}
+    }}
+    """
+
+    # Initialize the LLM model
+    response = client.chat.completions.create(
+            model="gpt-4o",
+            messages=[{"role": "user", "content": prompt}],
+            temperature=0.3,
+        )
+    category = response.choices[0].message.content.strip()
+
+    # Extract JSON from the response string by looking for the JSON block
+    json_str_match = re.search(r"```json\n(.*?)\n```", category, re.DOTALL)
+    if json_str_match:
+        json_str = json_str_match.group(1)
+    else:
+        json_str = category  # If not found, use the entire response
+
+    try:
+        # Parse string to Python dict
+        category_obj = json.loads(json_str)
+    except json.JSONDecodeError as e:
+        print("Failed to parse JSON:", e)
+        category_obj = {}  # Or handle error accordingly
+
+    # Log the result for debugging purposes
+    print("tags_and_buckets:", category_obj)
+
+    # Try to generate tags and categorize them
+    try:
+        document = {
+            "chatbot_id": chatbot_oid,
+            "version_id": version_oid,
+            "Catalogue": category_obj,
+            "url" : url
+        }
+
+        result = collection.insert_one(document)
+
+        # Return the result as a dictionary
+        return {"tags_and_buckets": category_obj}
+    
+    except Exception as e:
+        # Log error if an exception occurs during the prediction
+        logging.error(f"An error occurred during the prediction: {e}")
+        return {"tags_and_buckets": {}, "error": str(e)}
+
+
+
+def translate_welcome_message(message: str, lang: str) -> str:
+    """
+    Translates the given welcome message into the specified language using OpenAI.
+    """
+    prompt = f"You are an agent that converts the given welcome message: \"{message}\" into the required language: {lang}. Make it sound natural and welcoming."
+
+    try:
+        response = client.chat.completions.create(
+            model="gpt-4o",
+            messages=[{"role": "user", "content": prompt}],
+            temperature=0.3,
+        )
+        translated_message = response.choices[0].message.content.strip()
+
+        
+        return translated_message
+
+    except Exception as e:
+        return f"Error: {e}"    
+
+

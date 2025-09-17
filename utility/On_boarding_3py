@@ -2,9 +2,12 @@ import os
 import getpass
 import logging
 from typing import List, Optional, TypedDict
+from datetime import datetime
 from dotenv import load_dotenv
 from pymongo import MongoClient
+from bson import ObjectId
 import numpy as np
+import tiktoken
 
 from langchain.chat_models import init_chat_model
 from langchain_core.messages import HumanMessage, SystemMessage
@@ -20,7 +23,15 @@ logger = logging.getLogger(__name__)
 
 load_dotenv()
 
-# MongoDB client singleton
+# Token counting setup
+encoding = tiktoken.get_encoding("cl100k_base")
+MAX_TOKEN_LIMIT = 3_000_000
+
+# Mongo connection config
+MONGO_CONNECTION_STR = "mongodb://dev:N47309HxFWE2Ehc@35.209.224.122:27017/"
+DATABASE_NAME = "ChatbotDB-DEV"
+TOKEN_COLLECTION_NAME = "token_tracker"
+
 class MongoConnectionSingleton:
     _client: Optional[MongoClient] = None
 
@@ -29,6 +40,49 @@ class MongoConnectionSingleton:
         if cls._client is None:
             cls._client = MongoClient(connection_str)
         return cls._client
+
+def safe_objectid(value):
+    try:
+        return ObjectId(value)
+    except Exception:
+        return value
+
+def count_tokens(text: str) -> int:
+    return len(encoding.encode(text))
+
+def get_token_usage_from_mongo(chatbot_id: str) -> int:
+    try:
+        client = MongoConnectionSingleton.get_client(MONGO_CONNECTION_STR)
+        db = client[DATABASE_NAME]
+        collection = db[TOKEN_COLLECTION_NAME]
+        _id = safe_objectid(chatbot_id)
+        record = collection.find_one({"chatbot_id": _id})
+        if record and "total_tokens_used" in record:
+            return record["total_tokens_used"]
+        else:
+            return 0
+    except Exception as e:
+        logger.error(f"Error fetching token usage from MongoDB: {e}")
+        return 0
+
+def update_token_usage_in_mongo(chatbot_id: str, tokens_used: int):
+    try:
+        client = MongoConnectionSingleton.get_client(MONGO_CONNECTION_STR)
+        db = client[DATABASE_NAME]
+        collection = db[TOKEN_COLLECTION_NAME]
+        _id = safe_objectid(chatbot_id)
+
+        collection.update_one(
+            {"chatbot_id": _id},
+            {
+                "$inc": {"total_tokens_used": tokens_used},
+                "$set": {"last_updated_at": datetime.utcnow()},
+                "$setOnInsert": {"token_limit": MAX_TOKEN_LIMIT}
+            },
+            upsert=True
+        )
+    except Exception as e:
+        logger.error(f"Error updating token usage in MongoDB: {e}")
 
 try:
     if not os.environ.get("OPENAI_API_KEY"):
@@ -52,23 +106,19 @@ def cosine_similarity(vec1: List[float], vec2: List[float]) -> float:
     return dot / (norm1 * norm2)
 
 def check_fixscenarios(user_query: str,
-                       mongo_connection_str: str = "mongodb://dev:N47309HxFWE2Ehc@35.209.224.122:27017/",
-                       database_name: str = "ChatbotDB-DEV",
+                       mongo_connection_str: str = MONGO_CONNECTION_STR,
+                       database_name: str = DATABASE_NAME,
                        similarity_threshold: float = 0.9) -> Optional[str]:
-    """
-    Check fixscenarios collection for corrected response matching user query with high similarity.
-    """
     try:
         client = MongoConnectionSingleton.get_client(mongo_connection_str)
         db = client[database_name]
         collection = db.fixscenarios
-        scenarios = list(collection.find({}))  # Optionally filter {'is_enabled': True}
+        scenarios = list(collection.find({}))  # Optionally filter
 
         if not scenarios:
             return None
 
         query_vec = embeddings.embed_query(user_query)
-
         for scenario in scenarios:
             ques = scenario.get("customer_question", "")
             if not ques:
@@ -100,10 +150,17 @@ llm_response_cache: dict[tuple, str] = {}
 
 def chatbot(chatbot_id: str, version_id: str, prompt: str, user_id: str) -> str:
     try:
+        # Load current token usage from DB once per chatbot call
+        current_token_usage = get_token_usage_from_mongo(chatbot_id)
+        if current_token_usage >= MAX_TOKEN_LIMIT:
+            warning_msg = "Token usage limit exceeded for this chatbot. Please try again later."
+            logger.warning(warning_msg)
+            return warning_msg
+
         request_body = {
             "chatbot_id": chatbot_id,
             "version_id": version_id,
-            "collection_name": ["guidance", "handoff", "handoffbuzzwords"]
+            "collection_name": ["guidance", "handoff"]
         }
         guidelines = fetch_data(request_body)
         print(guidelines)  # Debug
@@ -116,17 +173,15 @@ def chatbot(chatbot_id: str, version_id: str, prompt: str, user_id: str) -> str:
         converstation_history = converstation_state[user_id]
         converstation_state[user_id].append({'role': 'user', 'content': prompt})
 
-        # Handoff scenarios check
+        # Handoff check
         handoff_descs = [d.get("description", "").lower() for d in guidelines.get("handoffscenarios", [])]
         handoff_keywords = [
             "fire", "melt", "burned", "melted", "burned up",
             "new product", "not present in your list",
-            "price", "pricing","finance", "payment", "billing",
-            "delivery status", "order status", "warranty and service requests","personal details"
-                                    "speak with a live agent", "unable to resolve", "live agent"
+            "price", "pricing",
+            "speak with a live agent", "unable to resolve", "live agent"
         ]
         prompt_lower = prompt.lower()
-
         if any(kw in prompt_lower for kw in handoff_keywords) or \
            any(desc and (desc in prompt_lower or prompt_lower in desc) for desc in handoff_descs):
             handoff_response = "Let's get you connected to one of our live agents so they can assist you further. Would it be okay if I connect you now?"
@@ -140,12 +195,12 @@ def chatbot(chatbot_id: str, version_id: str, prompt: str, user_id: str) -> str:
             return fix_response
 
         greeting = Bot_information[0].get('greeting_message', "Hello!")
-        purpose = Bot_information[0].get('purpose', 
+        purpose = Bot_information[0].get('purpose',
                                          "You are an AI assistant helping users with their queries on behalf of the organization. "
                                          "You provide clear and helpful responses while avoiding personal details and sensitive data.")
         languages = Bot_information[0].get('supported_languages', ["English"])
         tone_and_style = Bot_information[0].get('tone_style', "Friendly and professional")
-        company_info = bot_company[0].get('bot_company', 
+        company_info = bot_company[0].get('bot_company',
                                          "You are an AI assistant representing the organization. "
                                          "Your task is to help customers with their needs and guide them with relevant information, "
                                          "without disclosing personal user data or sensitive company records.")
@@ -156,7 +211,7 @@ def chatbot(chatbot_id: str, version_id: str, prompt: str, user_id: str) -> str:
             return llm_response_cache[cache_key_llm]
 
         llm_response = Personal_chatbot(converstation_history, prompt, languages, purpose, tone_and_style,
-                                       greeting, guidelines, company_info, chatbot_id, version_id)
+                                       greeting, guidelines, company_info, chatbot_id, version_id, user_id)
 
         llm_response_cache[cache_key_llm] = llm_response
         converstation_state[user_id].append({'role': 'bot', 'content': llm_response})
@@ -168,7 +223,7 @@ def chatbot(chatbot_id: str, version_id: str, prompt: str, user_id: str) -> str:
 
 def Personal_chatbot(converstation_history: List[dict], prompt: str, languages: List[str], purpose: str,
                     tone_and_style: str, greeting: str, guidelines: dict, company_info: str,
-                    chatbot_id: str, version_id: str) -> str:
+                    chatbot_id: str, version_id: str, user_id: str) -> str:
     class State(TypedDict):
         question: str
         context: List[Document]
@@ -243,7 +298,25 @@ def Personal_chatbot(converstation_history: List[dict], prompt: str, languages: 
                 ),
                 HumanMessage(f"{state['question']}")
             ]
+
+            input_text = "".join([msg.content if hasattr(msg, "content") else "" for msg in messages])
+            input_tokens = count_tokens(input_text)
+
             response = llm.invoke(messages)
+
+            output_tokens = count_tokens(response.content)
+            total_tokens = input_tokens + output_tokens
+
+            # Update tokens in MongoDB and check limit
+            update_token_usage_in_mongo(chatbot_id, total_tokens)
+            # Optionally, re-fetch usage to enforce check (to keep simple we trust update)
+            # or use local variable + eventual consistency approach
+            # Here simple enforcement:
+            current_usage = get_token_usage_from_mongo(chatbot_id)
+            if current_usage > MAX_TOKEN_LIMIT:
+                logger.warning(f"Token limit exceeded for chatbot {chatbot_id}")
+                return {"answer": "Sorry, this chatbot has reached the token usage limit. Please try again later."}
+
             return {"answer": response.content}
         except Exception as e:
             logger.error(f"Error in LLM generation: {e}")

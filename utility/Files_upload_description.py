@@ -10,6 +10,9 @@ from dotenv import load_dotenv  # Import the dotenv module
 import pymongo
 import json
 from bson import ObjectId
+from docx import Document as DocxDocument
+from langchain_core.documents import Document
+import pandas as pd
 
 # Setup logging
 logger = logging.getLogger(__name__)
@@ -17,7 +20,7 @@ logging.basicConfig(level=logging.INFO)
 
 # MongoDB setup
 mongo_client = pymongo.MongoClient("mongodb://dev:N47309HxFWE2Ehc@35.209.224.122:27017")
-db = mongo_client["ChatbotDB"]
+db = mongo_client["ChatbotDB-DEV"]
 collection = db['files']
 
 # Load environment variables from .env file
@@ -38,7 +41,7 @@ text_splitter = CharacterTextSplitter(chunk_size=1000, chunk_overlap=200)
 
 # Function to generate description, keywords, and tags using OpenAI API
 def generate_openai_output(text):
-    prompt = f"""Please read the following text or pdf data and write a description , keywords and tags as  given below provide the response in JSON format:
+    prompt = f"""Please read the following text or pdf, excel, doc, etc  data  and write a description , keywords and tags as  given below provide the response in JSON format:
     {{
         "description": "10-15 word description of the content",
         "keywords": ["5 important keywords"],
@@ -69,7 +72,7 @@ def generate_openai_output(text):
 # Function to read PDFs from GCS and extract text
 # MongoDB setup
 mongo_client = pymongo.MongoClient("mongodb://dev:N47309HxFWE2Ehc@35.209.224.122:27017")
-db = mongo_client["ChatbotDB"]
+db = mongo_client["ChatbotDB-DEV"]
 collection = db['files']
 
 def read_pdf_from_gcs(bucket_name, blob_names, chatbot_id, version_id):
@@ -143,11 +146,113 @@ def read_pdf_from_gcs(bucket_name, blob_names, chatbot_id, version_id):
     flattened_docs = list(chain.from_iterable(complete_document))
     return flattened_docs
 
+def document_splitter(text: str) :
+    # Assuming you have a text splitting logic, which uses SemanticChunker
+    try:
+        long_doc = [Document(page_content=text)]
+        # Use your document splitter here
+        docs = text_splitter.split_documents(long_doc)
+        return docs
+    except Exception as e:
+        logger.error(f"Document creator failed: {str(e)}")
+        raise
+
+def read_documents_from_gcs(bucket_name, blob_names, chatbot_id, version_id):
+    """Read various document types from GCS, extract text, enrich with OpenAI metadata, and update MongoDB"""
+    try:
+        all_docs = []
+        storage_client = storage.Client()
+        bucket = storage_client.bucket(bucket_name)
+
+        for blob_name in blob_names:
+            logger.info(f"📂 Processing blob: {blob_name}")
+            blob = bucket.blob(blob_name)
+
+            if not blob.exists():
+                logger.warning(f"⚠️ Blob '{blob_name}' not found in bucket '{bucket_name}'. Skipping.")
+                continue
+
+            try:
+                file_bytes = blob.download_as_bytes()
+                ext = os.path.splitext(blob_name)[-1].lower()
+                logger.info(f"📄 Detected file type: {ext}")
+
+                # Text extraction based on file type
+                if ext == '.pdf':
+                    pdf_reader = PyPDF2.PdfReader(BytesIO(file_bytes))
+                    text = "\n".join([page.extract_text() for page in pdf_reader.pages if page.extract_text()])
+
+                elif ext == '.txt':
+                    text = file_bytes.decode('utf-8', errors='ignore')
+
+                elif ext == '.docx':
+                    doc = DocxDocument(BytesIO(file_bytes))
+                    text = "\n".join([p.text for p in doc.paragraphs if p.text.strip()])
+
+                elif ext in ['.xls', '.xlsx']:
+                    excel = pd.read_excel(BytesIO(file_bytes), sheet_name=None)
+                    text = "\n\n".join([
+                        f"Sheet: {sheet}\n{df.to_string(index=False)}"
+                        for sheet, df in excel.items()
+                    ])
+
+                else:
+                    logger.warning(f"❌ Unsupported file format: {ext} for '{blob_name}'. Skipping.")
+                    continue
+
+                # Split document into smaller chunks
+                docs = document_splitter(text)
+                all_docs.append(docs)
+
+                # Generate metadata from OpenAI
+                openai_response = generate_openai_output(docs)
+                try:
+                    file_meta = json.loads(openai_response)
+                    description = file_meta.get('description', 'No description')
+                    keywords = file_meta.get('keywords', [])
+                    tags = file_meta.get('tags', [])
+                except Exception as json_err:
+                    logger.warning(f"⚠️ Failed to parse OpenAI response: {openai_response}")
+                    description, keywords, tags = 'No description', [], []
+
+                logger.info(f"📝 Description for {blob_name}: {description}")
+                logger.info(f"🔑 Keywords: {keywords}")
+                logger.info(f"🏷️ Tags: {tags}")
+
+                # Update MongoDB
+                collection.update_one(
+                    {
+                        "chatbot_id": ObjectId(chatbot_id),
+                        "version_id": ObjectId(version_id),
+                        "file_name": blob_name
+                    },
+                    {
+                        "$set": {
+                            "description": description,
+                            "keywords": keywords,
+                            "tags": tags
+                        }
+                    },
+                    upsert=True
+                )
+                logger.info(f"✅ MongoDB updated for blob: {blob_name}")
+
+            except Exception as file_err:
+                logger.error(f"❌ Error processing blob {blob_name}: {str(file_err)}")
+                continue
+
+        return list(chain.from_iterable(all_docs))
+
+    except Exception as e:
+        logger.error(f"🔥 Document reading pipeline failed: {str(e)}")
+        raise
+
+
 # Function to process each file content
 def description_from_gcs(bucket_name, blob_names,chatbot_id,version_id):
     """Load PDF documents from GCS and return them as documents"""
     try:
-        docs = read_pdf_from_gcs(bucket_name, blob_names,chatbot_id,version_id)
+        docs = read_documents_from_gcs(bucket_name, blob_names,chatbot_id,version_id)
         if not docs:
             logger.warning("No documents were extracted from the PDFs.")
             return "No documents extracted."

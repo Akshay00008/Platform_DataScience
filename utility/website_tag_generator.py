@@ -1,6 +1,13 @@
 from langchain_openai import ChatOpenAI
 import json
 import logging
+import requests
+from bs4 import BeautifulSoup
+import re
+import os 
+from langchain.chat_models import ChatOpenAI
+from langchain.vectorstores import FAISS
+from langchain.embeddings import OpenAIEmbeddings
 
 # Optional: Enable logging
 logging.basicConfig(level=logging.INFO)
@@ -85,3 +92,10 @@ def new_generate_tags_from_gpt(json_data):
         logging.exception("Error generating tags from GPT.")
         print("Error generating tags from GPT.")
         return {"error": str(e)}
+
+# Function to validate URL
+
+
+
+
+

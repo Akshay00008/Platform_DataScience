@@ -8,7 +8,7 @@ from langchain.text_splitter import CharacterTextSplitter
 
 # ==== CONFIG ====
 MONGO_URI = "mongodb://dev:N47309HxFWE2Ehc@35.209.224.122:27017"
-DB_NAME = "ChatbotDB"
+DB_NAME = "ChatbotDB-DEV"
 VECTOR_DB_PATH = "faiss_index_faq"
 
 # ==== DB CONNECTION ====
@@ -17,7 +17,7 @@ db = mongo_client[DB_NAME]
 guidance_collection = db["guidanceflows"]
 handoff_collection = db["handoffscenarios"]
 faq_collection = db["faqs"]
-
+buzz_words = db["handoffbuzzwords"]
 # ==== CORE FUNCTION ====
 
 def fetch_data(request_body):
@@ -50,16 +50,23 @@ def fetch_data(request_body):
         guidance_data = list(guidance_collection.find(query, {
             "_id": 0,
             "section_title": 1,
-            "content": 1
+            "description": 1
         }))
         result["guidanceflows"] = guidance_data
 
     if "handoff" in requested_collections:
         handoff_data = list(handoff_collection.find(query, {
             "_id": 0,
-            "guidance": 1
+            "description": 1
         }))
         result["handoffscenarios"] = handoff_data
+
+    if "handoffbuzzwords" in requested_collections:
+        buzzword_data = list(buzz_words.find(query, {
+            "_id": 0,
+            "buzzwords": 1
+        }))
+        result["handoffbuzzwords"] = buzzword_data    
 
     return result
 

@@ -5,7 +5,7 @@ import json
 
 def Bot_Retrieval(chatbot_id, version_id):
     client = pymongo.MongoClient("mongodb://dev:N47309HxFWE2Ehc@35.209.224.122:27017")
-    db = client["ChatbotDB"]
+    db = client["ChatbotDB-DEV"]
     collection = db['chatbotversions']
     
     # If your IDs are ObjectId in MongoDB, convert strings to ObjectId
@@ -43,7 +43,7 @@ def Bot_Retrieval(chatbot_id, version_id):
 
 def website_tag_saving(website_taggers,chatbot_id,version_id):
     client = pymongo.MongoClient("mongodb://dev:N47309HxFWE2Ehc@35.209.224.122:27017")
-    db = client["ChatbotDB"]
+    db = client["Chatbot-Backup"]
     collection = db['website_tags']
 
     print("website_taggers")
@@ -64,7 +64,7 @@ def website_tag_saving(website_taggers,chatbot_id,version_id):
 def company_Retrieval():
     # Connect to the MongoDB client
     client = pymongo.MongoClient("mongodb://dev:N47309HxFWE2Ehc@35.209.224.122:27017")
-    db = client["ChatbotDB"]
+    db = client["Chatbot-Backup"]
     collection = db['companies']
     
     # Retrieve all documents from the collection

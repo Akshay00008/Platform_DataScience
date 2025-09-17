@@ -1,19 +1,38 @@
+# Core dependencies
+langchain
+langchain-community
+langchain-openai
+langchain-core
+langchain-experimental
+langgraph
+langchain-cli
+
+
+# Vector stores
+faiss-cpu   # or faiss-gpu, depending on your setup
+
+# Database
+pymongo
+
+# Environment and config
+python-dotenv
+
+# Cloud storage
+google-cloud-storage
+
+# File parsing
+PyPDF2
+python-docx
+pandas
+pydantic 
+bs4
+google-api-python-client
+
+# API interaction
+openai
+
+# Web frameworks
 flask
 flask-cors
-pymongo
-pandas
-requests
-beautifulsoup4
 werkzeug
-yt-dlp
-langchain
-logging
-typing_extensions
-pydantic
-langgraph
-langchain
-langchain-experimental
-langchain_openai
-langchain-core
-google-cloud-storage
-faiss-cpu
+fastapi

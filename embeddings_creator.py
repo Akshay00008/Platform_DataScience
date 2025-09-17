@@ -222,6 +222,9 @@ import logging
 from typing import List
 from utility.logger_file import Logs
 
+from docx import Document as DocxDocument
+import pandas as pd
+
 # Logger setup (assuming the logger is defined in your project)
 logger = logging.getLogger("faiss_index_logger")
 
@@ -282,9 +285,62 @@ def read_pdf_from_gcs(bucket_name: str, blob_names: List[str]) -> List[str]:
         raise
 
 
+
+def read_documents_from_gcs(bucket_name: str, blob_names: List[str]) -> List[str]:
+    """Read various document types from GCS and extract text with error handling"""
+    try:
+        complete_document = []
+
+        storage_client = storage.Client()
+        bucket = storage_client.bucket(bucket_name)
+
+        for blob_name in blob_names:
+            logger.info(f"Processing blob: {blob_name}")
+            blob = bucket.blob(blob_name)
+            if not blob.exists():
+                logger.warning(f"⚠️ Blob '{blob_name}' not found in bucket '{bucket_name}'. Skipping.")
+                continue
+
+            file_bytes = blob.download_as_bytes()
+            ext = os.path.splitext(blob_name)[-1].lower()
+
+            # Extract text depending on file extension
+            if ext == '.pdf':
+                pdf_reader = PyPDF2.PdfReader(BytesIO(file_bytes))
+                text = "\n".join([page.extract_text() for page in pdf_reader.pages if page.extract_text()])
+
+            elif ext == '.txt':
+                text = file_bytes.decode('utf-8', errors='ignore')
+
+            elif ext == '.docx':
+                doc = DocxDocument(BytesIO(file_bytes))
+                text = "\n".join([p.text for p in doc.paragraphs if p.text.strip()])
+
+            elif ext in ['.xls', '.xlsx']:
+                excel = pd.read_excel(BytesIO(file_bytes), sheet_name=None)
+                text = "\n\n".join([
+                    f"Sheet: {sheet}\n{df.to_string(index=False)}"
+                    for sheet, df in excel.items()
+                ])
+
+            else:
+                logger.warning(f"❌ Unsupported file format: {ext} for '{blob_name}'. Skipping.")
+                continue
+
+            docs = document_splitter(text)
+            complete_document.append(docs)
+
+        return list(chain.from_iterable(complete_document))
+
+    except Exception as e:
+        logger.error(f"Document reading failed: {str(e)}")
+        raise
+
+
+
 def load_or_create_faiss_index(docs: List[str], chatbot_id: str, version_id: str) -> str:
     try:
-        index_dir = "/home/bramhesh_srivastav/Platform_DataScience/faiss_indexes"  # Directory to store FAISS indexes
+        index_dir = "/home/bramhesh_srivastav/platformdevelopment/faiss_indexes"  # Directory to store FAISS indexes
         
         os.makedirs(index_dir, exist_ok=True)
 
@@ -325,7 +381,8 @@ def load_or_create_faiss_index(docs: List[str], chatbot_id: str, version_id: str
 def embeddings_from_gcb(chatbot_id: str, version_id: str, bucket_name: str, blob_names: List[str]) -> str:
     try:
         # Retrieve documents from Google Cloud Storage
-        docs = read_pdf_from_gcs(bucket_name, blob_names)
+        
+        docs= read_documents_from_gcs(bucket_name, blob_names)
         logger.info(f"Documents extracted: {len(docs)}")
 
         if not docs:
@@ -396,7 +453,7 @@ def embeddings_from_website_content(json_data,  chatbot_id, version_id):
     faiss_index = FAISS.from_texts(text_chunks, embeddings, metadatas=chunk_metadata)
  
     # Save index and metadata
-    index_dir  = "/home/bramhesh_srivastav/Platform_DataScience/faiss_indexes"  # Directory where indexes will be saved
+    index_dir  = "/home/bramhesh_srivastav/platformdevelopment/faiss_indexes"  # Directory where indexes will be saved
     os.makedirs(index_dir, exist_ok=True)
     # Generate a unique index filename based on chatbot_id and version_id
     index_filename = f"{chatbot_id}_{version_id}_faiss_index_website"

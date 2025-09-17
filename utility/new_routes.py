@@ -38,7 +38,7 @@ sync_info = {
 def update_sync_status(chatbot_id, version_id):
     try:
         client = pymongo.MongoClient("mongodb://dev:N47309HxFWE2Ehc@35.209.224.122:27017")
-        db = client["ChatbotDB"]
+        db = client["ChatbotDB-DEV"]
         collection = db['chatbotversions']
 
         
@@ -102,11 +102,36 @@ def process_scraping(url, chatbot_id, version_id):
         website_taggers = new_generate_tags_from_gpt(json_data)
         print("***********************")
 
+
         website_tag_saving(website_taggers, chatbot_id, version_id)
         print("Tags created and stored in MongoDB")
 
         embeddings_from_website_content(json_data, chatbot_id, version_id)
         print("Website vector created")
+
+        loggs.info(f"Tags and vectors generated for URL: {url}")
+
+        # # ✅ Only mark thread done if all succeed
+        # mark_thread_done()
+        target_vector='website'
+        # Generate the tags and buckets
+        faisll_load=bots.load_faiss_index(chatbot_id,version_id,target_vector)
+        print(faisll_load)
+
+        query = "Get the over all website content to create a catelogue based on website content like Tilte , description, keywords, etc "
+        
+
+        if not query or not chatbot_id or not version_id:
+            return jsonify({"error": "query, chatbot_id, and version_id are required"}), 400
+
+        
+        top_chunks = bots.search_faiss(query,faisll_load)
+        print("*****127777")
+        extracted_content_text = bots.generate_tags_and_buckets_from_json(top_chunks,chatbot_id,version_id,url)
+
+        print(extracted_content_text)
+        # extracted_faqs = bots.parse_faq_text(extracted_content_text)
+      
 
         loggs.info(f"Tags and vectors generated for URL: {url}")
 
@@ -380,7 +405,7 @@ def handoff_guidance_endpoint():
 
     try:
         guidance_text = generate_handoff_guidance(query, chatbot_id, version_id)
-        return jsonify({"handoff_guidance": guidance_text})
+        return jsonify({"handoff_guidance": "generated hand_off successfully_text"})
     except Exception as e:
         return jsonify({"error": str(e)}), 500 
 
@@ -410,6 +435,15 @@ def retrain_bot():
     return merged_result
 
 
+@app.route("/welcome_message", methods=["POST"], strict_slashes=False)
+def welcome_message():
+    data = request.get_json()
+    message = data.get("message")
+    lang = data.get("lang")
+
+    translate=bots.translate_welcome_message(message,lang)
+
+    return {"message": translate} 
 
 
 
