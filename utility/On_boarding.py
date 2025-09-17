@@ -171,7 +171,7 @@ def chatbot(chatbot_id: str, version_id: str, prompt: str, user_id: str) -> str:
         request_body = {
             "chatbot_id": chatbot_id,
             "version_id": version_id,
-            "collection_name": ["guidance", "handoff"]
+            "collection_name": ["guidance", "handoff", "handoffbuzzwords"]
         }
         guidelines = fetch_data(request_body)
         print(guidelines)  # Debug
@@ -185,11 +185,12 @@ def chatbot(chatbot_id: str, version_id: str, prompt: str, user_id: str) -> str:
         converstation_state[user_id].append({'role': 'user', 'content': prompt})
 
         # Handoff check
-        handoff_descs = [d.get("description", "").lower() for d in guidelines.get("handoffscenarios", [])]
+        handoff_descs = [d.get("description", "").lower() for d in guidelines.get("handoffbuzzwords", [])]
         handoff_keywords = [
             "fire", "melt", "burned", "melted", "burned up",
             "new product", "not present in your list",
-            "price", "pricing",
+            "price", "pricing", "finance", "payment", "billing", "illness",
+            "delivery status", "order status", "warranty and service requests",
             "speak with a live agent", "unable to resolve", "live agent"
         ]
         prompt_lower = prompt.lower()
