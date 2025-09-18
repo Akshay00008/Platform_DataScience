@@ -204,20 +204,29 @@ Here is an example format of the JSON output:
 
     try:
         response = client.chat.completions.create(
-            model="gpt-4o",
+            model="gpt-4o-mini",
             messages=[{"role": "user", "content": prompt}],
             temperature=0.3,
         )
         category = response.choices[0].message.content.strip()
 
-        # Log the raw output
         print("Raw output:\n", category)
 
-        # Clean the string: Remove any markdown characters (e.g., triple backticks)
-        cleaned_category = category.strip().replace("```", "")
+        # Clean the string: Remove markdown and extra characters like backticks
+        cleaned_category = re.sub(r'```json|```', '', category).strip()
 
         # Try parsing the cleaned JSON string
         category_obj = json.loads(cleaned_category)
+
+        print("Parsed JSON object:\n", category_obj)
+
+    except json.JSONDecodeError as e:
+        logging.error(f"JSON Decode Error: {e}")
+        category_obj = {}
+    except Exception as e:
+        logging.error(f"Failed to generate or parse tags and buckets: {e}")
+        category_obj = {}
+
 
         print("Parsed JSON object:\n", category_obj)
 
