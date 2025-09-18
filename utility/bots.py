@@ -210,10 +210,13 @@ Here is an example format of the JSON output:
         )
         category = response.choices[0].message.content.strip()
         print("tags_and_buckets:", category)
+        
+        # Extract JSON string correctly
         json_str_match = re.search(r"``````", category, re.DOTALL)
         json_str = json_str_match.group(1) if json_str_match else category
 
         category_obj = json.loads(json_str)
+
     except Exception as e:
         logging.error(f"Failed to generate or parse tags and buckets: {e}")
         category_obj = {}
