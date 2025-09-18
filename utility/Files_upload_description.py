@@ -183,7 +183,8 @@ def read_documents_from_gcs(bucket_name, blob_names, chatbot_id, version_id):
 
                 openai_response = generate_openai_output(docs)
                 try:
-                    file_meta = json.loads(openai_response)
+                    cleaned_category = re.sub(r'```json|```', '', openai_response).strip()
+                    file_meta = json.loads(cleaned_category)
                     description = file_meta.get('description', 'No description')
                     keywords = file_meta.get('keywords', [])
                     tags = file_meta.get('tags', [])
