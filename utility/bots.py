@@ -210,7 +210,7 @@ Here is an example format of the JSON output:
         )
         category = response.choices[0].message.content.strip()
 
-        # print("Raw output:\n", category)
+        print("Raw output:\n", category)
 
         # Clean the string: Remove markdown and extra characters like backticks
         cleaned_category = re.sub(r'```json|```', '', category).strip()
