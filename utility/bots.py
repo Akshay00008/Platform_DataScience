@@ -210,10 +210,14 @@ Here is an example format of the JSON output:
         )
         category = response.choices[0].message.content.strip()
 
+        # Log the raw output
         print("Raw output:\n", category)
-        
-        # Attempt to load the JSON directly
-        category_obj = json.loads(category)
+
+        # Clean the string: Remove any markdown characters (e.g., triple backticks)
+        cleaned_category = category.strip().replace("```", "")
+
+        # Try parsing the cleaned JSON string
+        category_obj = json.loads(cleaned_category)
 
         print("Parsed JSON object:\n", category_obj)
 
