@@ -269,6 +269,7 @@ def faqs_endpoint():
         extracted_faqs = bots.parse_faq_text(extracted_faq_text)
         inserted_existing_count = bots.save_faqs_to_mongo(extracted_faqs, chatbot_id, version_id)
         generated_faq_text = bots.generate_faqs_from_vectors(top_chunks, target_count=generated_faq_count)
+        print(generated_faq_text)
         generated_faqs = bots.parse_faq_text(generated_faq_text)
         inserted_generated_count = bots.save_faqs_to_mongo(generated_faqs, chatbot_id, version_id)
         return jsonify({
