@@ -70,7 +70,7 @@ def fetch_data(request_body):
 
     if "guidance" in requested_collections:
         guidance_data = mongo_operation(
-            operation="read",
+            operation="readV2",
             collection_name=COLLECTION_GUIDANCE,
             query=query,
             projection={"_id": 0, "section_title": 1, "description": 1}
@@ -79,7 +79,7 @@ def fetch_data(request_body):
 
     if "handoff" in requested_collections:
         handoff_data = mongo_operation(
-            operation="read",
+            operation="readV2",
             collection_name=COLLECTION_HANDOFF,
             query=query,
             projection={"_id": 0, "description": 1}
@@ -88,7 +88,7 @@ def fetch_data(request_body):
 
     if "handoffbuzzwords" in requested_collections:
         buzzword_data = mongo_operation(
-            operation="read",
+            operation="readV2",
             collection_name=COLLECTION_BUZZWORDS,
             query=query,
             projection={"_id": 0, "buzzwords": 1}
