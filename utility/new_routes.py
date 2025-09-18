@@ -49,7 +49,9 @@ def update_sync_status(chatbot_id, version_id):
         chatbot_obj_id = ObjectId(chatbot_id) if ObjectId.is_valid(chatbot_id) else chatbot_id
         version_obj_id = ObjectId(version_id) if ObjectId.is_valid(version_id) else version_id
         query = {"chatbot_id": chatbot_obj_id, "version_id": version_obj_id}
-        update = {"$set": {"sync_status": True}}
+
+        update = {"sync_status": True}  # **No $set here**
+
         result = mongo_operation(operation="update", query=query, update=update)
         if getattr(result, 'modified_count', 0) > 0:
             loggs.info(f"✅ Sync status updated successfully for chatbot_id={chatbot_id}, version_id={version_id}")
@@ -57,6 +59,7 @@ def update_sync_status(chatbot_id, version_id):
             loggs.info(f"⚠️ No document updated for chatbot_id={chatbot_id}, version_id={version_id}")
     except Exception as e:
         loggs.info(f"❌ Failed to update sync status: {e}")
+
 
 def mark_thread_done():
     global active_threads
