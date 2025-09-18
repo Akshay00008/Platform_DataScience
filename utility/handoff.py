@@ -115,7 +115,7 @@ Provide output in structured guidance points with section titles. Do not include
             "version_id": ObjectId(version_id),
             "section_title": lines[0].strip(),
             "description": "\n".join(lines[1:]).strip(),
-            "category_name": "handoff",
+            "category_name": "New",
             "source_type": "ai",
             "is_enabled": False
         })
