@@ -63,7 +63,7 @@ def fetch_data(request_body):
     query = {
         "chatbot_id": chatbot_id,
         "version_id": version_id,
-        "is_enabled": True
+        # "is_enabled": True
     }
 
     result = {}
