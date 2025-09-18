@@ -160,7 +160,7 @@ def save_faqs_to_mongo(faq_list, chatbot_id, version_id):
 
 # Exclude the 0th index from faq_list
     print(faq_list)
-    # faq_list_to_insert = faq_list[1:]
+    faq_list_to_insert = faq_list[1:]
 
 # Insert into MongoDB
     result = mongo_operation(operation="insertmany", query=faq_list)
