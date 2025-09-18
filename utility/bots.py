@@ -150,7 +150,7 @@ def save_faqs_to_mongo(faq_list, chatbot_id, version_id):
         print(f"Invalid ObjectId: {e}")
         return 0
 
-    for faq in faq_list:
+    for index, faq in enumerate(faq_list, start=1):
         faq["chatbot_id"] = chatbot_oid
         faq["version_id"] = version_oid
         faq["is_enabled"] = False
@@ -158,7 +158,11 @@ def save_faqs_to_mongo(faq_list, chatbot_id, version_id):
         faq["ai_category_name"] = "Product"
         faq["source_type"] = "ai"
 
-    result = mongo_operation(operation="insertmany", query=faq_list)
+# Exclude the 0th index from faq_list
+    faq_list_to_insert = faq_list[1:]
+
+# Insert into MongoDB
+    result = mongo_operation(operation="insertmany", query=faq_list_to_insert)
     print(f"Inserted {len(result.inserted_ids)} FAQs into MongoDB.")
     return len(result.inserted_ids)
 
