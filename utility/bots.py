@@ -78,7 +78,7 @@ Q: ...
 A: ...
 """
     response = client.chat.completions.create(
-        model="gpt-4o",
+        model="gpt-4o-mini",
         messages=[{"role": "user", "content": prompt}],
         temperature=0.3,
     )
@@ -98,7 +98,7 @@ Q: ...
 A: ...
 """
     response = client.chat.completions.create(
-        model="gpt-4o",
+        model="gpt-4o-mini",
         messages=[{"role": "user", "content": prompt}],
         temperature=0.5,
     )
@@ -131,7 +131,7 @@ A: {faq['answer']}
 Return only the category name in one or two words.
 """
         response = client.chat.completions.create(
-            model="gpt-4o",
+            model="gpt-4o-mini",
             messages=[{"role": "user", "content": prompt}],
             temperature=0.3,
         )
@@ -204,11 +204,12 @@ Here is an example format of the JSON output:
 
     try:
         response = client.chat.completions.create(
-            model="gpt-4o",
+            model="gpt-4o-mini",
             messages=[{"role": "user", "content": prompt}],
             temperature=0.3,
         )
         category = response.choices[0].message.content.strip()
+        print("tags_and_buckets:", category)
         json_str_match = re.search(r"``````", category, re.DOTALL)
         json_str = json_str_match.group(1) if json_str_match else category
 
@@ -244,7 +245,7 @@ def translate_welcome_message(message: str, lang: str) -> str:
     prompt = f"""You are an agent that converts the given welcome message: "{message}" into the required language: {lang}. Make it sound natural and welcoming."""
     try:
         response = client.chat.completions.create(
-            model="gpt-4o",
+            model="gpt-4o-mini",
             messages=[{"role": "user", "content": prompt}],
             temperature=0.3,
         )
