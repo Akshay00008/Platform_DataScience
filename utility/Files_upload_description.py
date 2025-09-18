@@ -67,7 +67,7 @@ def generate_openai_output(text):
         messages=[{"role": "user", "content": prompt}],
         temperature=0.3,
     )
-    content = response.choices[0].message.content
+    content = response.choices[0].message.content.strip()
     print(content)
     return content
 
@@ -183,19 +183,17 @@ def read_documents_from_gcs(bucket_name, blob_names, chatbot_id, version_id):
 
                 openai_response = generate_openai_output(docs)
                 try:
-                    # Clean the response: Remove markdown formatting (```)
-                    clean_response = re.sub(r'```json|```', '', openai_response).strip()
-
-                    # Now parse the cleaned response into JSON
-                    file_meta = json.loads(clean_response)
-
+                    file_meta = json.loads(openai_response)
                     description = file_meta.get('description', 'No description')
                     keywords = file_meta.get('keywords', [])
                     tags = file_meta.get('tags', [])
-                    
                 except Exception as json_err:
                     logger.warning(f"⚠️ Failed to parse OpenAI response: {openai_response}")
                     description, keywords, tags = 'No description', [], []
+
+                logger.info(f"📝 Description for {blob_name}: {description}")
+                logger.info(f"🔑 Keywords: {keywords}")
+                logger.info(f"🏷️ Tags: {tags}")
 
                 mongo_operation(
                     operation="update",
