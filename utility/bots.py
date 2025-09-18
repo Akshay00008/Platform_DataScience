@@ -212,18 +212,18 @@ Here is an example format of the JSON output:
 
         print("Raw output:\n", category)
         
-        json_str_match = re.search(r"``````", category)
-        if json_str_match:
-            json_str = json_str_match.group(1)
-        else:
-            json_str = category  # fallback
-        
-        print("Extracted JSON string:\n", json_str)
-        category_obj = json.loads(json_str)
+        # Attempt to load the JSON directly
+        category_obj = json.loads(category)
 
+        print("Parsed JSON object:\n", category_obj)
+
+    except json.JSONDecodeError as e:
+        logging.error(f"JSON Decode Error: {e}")
+        category_obj = {}
     except Exception as e:
         logging.error(f"Failed to generate or parse tags and buckets: {e}")
         category_obj = {}
+
 
 
     print("tags_and_buckets:", category_obj)
