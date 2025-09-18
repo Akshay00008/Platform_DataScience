@@ -77,7 +77,7 @@ JSON Data:
 
 def new_generate_tags_from_gpt(json_data):
     try:
-        llm = ChatOpenAI(model_name="gpt-4o-mini", temperature=0)
+        llm = ChatOpenAI(model_name="gpt-5-mini-2025-08-07", temperature=0)
         prompt = generate_structured_prompt(json_data)
         response = llm.predict(prompt)
 

@@ -95,7 +95,7 @@ Provide output in structured guidance points with section titles. Do not include
 """
 
     response = client.chat.completions.create(
-        model="gpt-4o-mini",
+        model="gpt-5-mini-2025-08-07",
         messages=[{"role": "user", "content": prompt}],
         temperature=0.3,
     )
