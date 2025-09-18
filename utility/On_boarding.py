@@ -4,10 +4,10 @@ import logging
 from typing import List, Optional, TypedDict
 from datetime import datetime
 from dotenv import load_dotenv
-from pymongo import MongoClient
 from bson import ObjectId
 import numpy as np
 import tiktoken
+from pymongo import MongoClient
 
 from langchain.chat_models import init_chat_model
 from langchain_core.messages import HumanMessage, SystemMessage
@@ -15,33 +15,22 @@ from langchain_core.documents import Document
 from langchain_community.vectorstores import FAISS
 from langchain_openai import OpenAIEmbeddings
 from langgraph.graph import START, StateGraph
+
 from utility.retrain_bot import fetch_data
-from Databases.mongo import Bot_Retrieval, company_Retrieval
+from Databases.mongo_db import Bot_Retrieval, company_Retrieval
+from Databases.mongo import mongo_crud  # Centralized mongo_crud import
 
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
 load_dotenv()
 
-# Token counting setup
+# Token counting
 encoding = tiktoken.get_encoding("cl100k_base")
 MAX_TOKEN_LIMIT = 3_000_000
 
-# Mongo connection config
-MONGO_CONNECTION_STR = "mongodb://dev:N47309HxFWE2Ehc@35.209.224.122:27017/"
-DATABASE_NAME = "ChatbotDB-DEV"
-TOKEN_COLLECTION_NAME = "token_tracker"
-
-
-class MongoConnectionSingleton:
-    _client: Optional[MongoClient] = None
-
-    @classmethod
-    def get_client(cls, connection_str: str) -> MongoClient:
-        if cls._client is None:
-            cls._client = MongoClient(connection_str)
-        return cls._client
-
+DB_NAME = "ChatbotDB-DEV"
+TOKEN_COLLECTION = "token_tracker"
 
 def safe_objectid(value):
     try:
@@ -49,46 +38,49 @@ def safe_objectid(value):
     except Exception:
         return value
 
-
 def count_tokens(text: str) -> int:
     return len(encoding.encode(text))
 
+def mongo_operation(operation, collection_name, query=None, update=None, start=0, stop=10):
+    """Centralized call to mongo_crud without specifying host/port."""
+    return mongo_crud(
+        host=None,
+        port=None,
+        db_name=DB_NAME,
+        collection_name=collection_name,
+        operation=operation,
+        query=query or {},
+        update=update or {},
+        start=start,
+        stop=stop
+    )
 
 def get_token_usage_from_mongo(chatbot_id: str) -> int:
     try:
-        client = MongoConnectionSingleton.get_client(MONGO_CONNECTION_STR)
-        db = client[DATABASE_NAME]
-        collection = db[TOKEN_COLLECTION_NAME]
         _id = safe_objectid(chatbot_id)
-        record = collection.find_one({"chatbot_id": _id})
+        record = mongo_operation("findone", TOKEN_COLLECTION, query={"chatbot_id": _id})
         if record and "total_tokens_used" in record:
             return record["total_tokens_used"]
-        else:
-            return 0
+        return 0
     except Exception as e:
         logger.error(f"Error fetching token usage from MongoDB: {e}")
         return 0
 
-
 def update_token_usage_in_mongo(chatbot_id: str, tokens_used: int):
     try:
-        client = MongoConnectionSingleton.get_client(MONGO_CONNECTION_STR)
-        db = client[DATABASE_NAME]
-        collection = db[TOKEN_COLLECTION_NAME]
         _id = safe_objectid(chatbot_id)
-
-        collection.update_one(
-            {"chatbot_id": _id},
-            {
+        mongo_operation(
+            "update",
+            TOKEN_COLLECTION,
+            query={"chatbot_id": _id},
+            update={
                 "$inc": {"total_tokens_used": tokens_used},
                 "$set": {"last_updated_at": datetime.utcnow()},
                 "$setOnInsert": {"token_limit": MAX_TOKEN_LIMIT}
-            },
-            upsert=True
+            }
         )
     except Exception as e:
         logger.error(f"Error updating token usage in MongoDB: {e}")
-
 
 try:
     if not os.environ.get("OPENAI_API_KEY"):
@@ -98,11 +90,10 @@ try:
     model = os.getenv('GPT_model')
     model_provider = os.getenv('GPT_model_provider')
     if not api or not model or not model_provider:
-        raise ValueError("Please check the OPENAI_API_KEY, GPT_model, and GPT_model_provider.")
+        raise ValueError("Missing OPENAI_API_KEY, GPT_model, or GPT_model_provider in environment.")
 except Exception as e:
     logger.error(f"Initialization failed: {e}")
     raise
-
 
 def cosine_similarity(vec1: List[float], vec2: List[float]) -> float:
     v1, v2 = np.array(vec1), np.array(vec2)
@@ -112,20 +103,11 @@ def cosine_similarity(vec1: List[float], vec2: List[float]) -> float:
         return 0.0
     return dot / (norm1 * norm2)
 
-
-def check_fixscenarios(user_query: str,
-                       mongo_connection_str: str = MONGO_CONNECTION_STR,
-                       database_name: str = DATABASE_NAME,
-                       similarity_threshold: float = 0.9) -> Optional[str]:
+def check_fixscenarios(user_query: str, similarity_threshold: float = 0.9) -> Optional[str]:
     try:
-        client = MongoConnectionSingleton.get_client(mongo_connection_str)
-        db = client[database_name]
-        collection = db.fixscenarios
-        scenarios = list(collection.find({}))  # Optionally filter
-
+        scenarios = mongo_operation("read", "fixscenarios")
         if not scenarios:
             return None
-
         query_vec = embeddings.embed_query(user_query)
         for scenario in scenarios:
             ques = scenario.get("customer_question", "")
@@ -140,7 +122,6 @@ def check_fixscenarios(user_query: str,
         logger.error(f"Error during fixscenarios semantic check: {err}")
         return None
 
-
 def load_llm(key: str, model_provider: str, model_name: str):
     try:
         if not all([key, model_provider, model_name]):
@@ -151,17 +132,14 @@ def load_llm(key: str, model_provider: str, model_name: str):
         logger.error(f"Failed to initialize LLM: {e}")
         raise
 
-
 llm = load_llm(api, model_provider, model)
 
 converstation_state: dict[str, List[dict]] = {}
 retrieval_cache: dict[tuple, List[Document]] = {}
 llm_response_cache: dict[tuple, str] = {}
 
-
 def chatbot(chatbot_id: str, version_id: str, prompt: str, user_id: str) -> str:
     try:
-        # Load current token usage from DB once per chatbot call
         current_token_usage = get_token_usage_from_mongo(chatbot_id)
         if current_token_usage >= MAX_TOKEN_LIMIT:
             warning_msg = "Token usage limit exceeded for this chatbot. Please try again later."
@@ -171,10 +149,10 @@ def chatbot(chatbot_id: str, version_id: str, prompt: str, user_id: str) -> str:
         request_body = {
             "chatbot_id": chatbot_id,
             "version_id": version_id,
-            "collection_name": ["guidance", "handoff", "handoffbuzzwords"]
+            "collection_name": ["guidance", "handoff"]
         }
         guidelines = fetch_data(request_body)
-        print(guidelines)  # Debug
+        logger.debug(guidelines)
 
         Bot_information = Bot_Retrieval(chatbot_id, version_id)
         bot_company = company_Retrieval()
@@ -184,23 +162,20 @@ def chatbot(chatbot_id: str, version_id: str, prompt: str, user_id: str) -> str:
         converstation_history = converstation_state[user_id]
         converstation_state[user_id].append({'role': 'user', 'content': prompt})
 
-        # Handoff check
-        handoff_descs = [d.get("description", "").lower() for d in guidelines.get("handoffbuzzwords", [])]
+        handoff_descs = [d.get("description", "").lower() for d in guidelines.get("handoffscenarios", [])]
         handoff_keywords = [
             "fire", "melt", "burned", "melted", "burned up",
             "new product", "not present in your list",
-            "price", "pricing", "finance", "payment", "billing", "illness",
-            "delivery status", "order status", "warranty and service requests",
+            "price", "pricing",
             "speak with a live agent", "unable to resolve", "live agent"
         ]
         prompt_lower = prompt.lower()
         if any(kw in prompt_lower for kw in handoff_keywords) or \
-           any(desc and (desc in prompt_lower or prompt_lower in desc) for desc in handoff_descs):
+                any(desc and (desc in prompt_lower or prompt_lower in desc) for desc in handoff_descs):
             handoff_response = "Let's get you connected to one of our live agents so they can assist you further. Would it be okay if I connect you now?"
             converstation_state[user_id].append({'role': 'bot', 'content': handoff_response})
             return handoff_response
 
-        # Fixscenarios check
         fix_response = check_fixscenarios(prompt)
         if fix_response:
             converstation_state[user_id].append({'role': 'bot', 'content': fix_response})
@@ -223,7 +198,7 @@ def chatbot(chatbot_id: str, version_id: str, prompt: str, user_id: str) -> str:
             return llm_response_cache[cache_key_llm]
 
         llm_response = Personal_chatbot(converstation_history, prompt, languages, purpose, tone_and_style,
-                                       greeting, guidelines, company_info, chatbot_id, version_id, user_id)
+                                        greeting, guidelines, company_info, chatbot_id, version_id, user_id)
 
         llm_response_cache[cache_key_llm] = llm_response
         converstation_state[user_id].append({'role': 'bot', 'content': llm_response})
@@ -248,6 +223,8 @@ def Personal_chatbot(converstation_history: List[dict], prompt: str, languages: 
             logger.info("Using cached retrieval results")
             return {"context": retrieval_cache[cache_key]}
         try:
+            import os
+
             faiss_index_dir = "/home/bramhesh_srivastav/platformdevelopment/faiss_indexes"
             faiss_index_filename = f"{chatbot_id}_{version_id}_faiss_index"
             faiss_index_website = f"{chatbot_id}_{version_id}_faiss_index_website"

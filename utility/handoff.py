@@ -1,64 +1,55 @@
 import os
 from dotenv import load_dotenv
-import pymongo
+from bson import ObjectId
+from openai import OpenAI
 from langchain_community.vectorstores import FAISS
 from langchain_openai import OpenAIEmbeddings
-from openai import OpenAI
-from bson import ObjectId
+import os
+
+# Import centralized mongo_crud
+from Databases.mongo import mongo_crud
 
 # Load environment variables
 load_dotenv()
 openai_api_key = os.getenv("OPENAI_API_KEY")
 
-# MongoDB Setup
-mongo_client = pymongo.MongoClient("mongodb://dev:N47309HxFWE2Ehc@35.209.224.122:27017")
-db = mongo_client["ChatbotDB-DEV"]
-collection = db['handoffscenarios']
-
-# FAISS and Embedding Model Setup
-# faiss_path = r"/home/bramhesh_srivastav/Platform_DataScience/website_faiss_index"
+# Initialize OpenAI client and embeddings
+client = OpenAI(api_key=openai_api_key)
 embedding_model = OpenAIEmbeddings(model="text-embedding-3-large")
 
-# OpenAI Client Setup
-client = OpenAI(api_key=openai_api_key)
+# Constants for DB and collection
+DB_NAME = "ChatbotDB-DEV"
+COLLECTION_HANDOFF = "handoffscenarios"
 
-# Function to Load FAISS Index Fresh Every Time
-def load_faiss_index(chatbot_id,version_id):
-    """
-    Load the FAISS index fresh from disk each time it's called.
+def mongo_operation(operation, collection_name=COLLECTION_HANDOFF, query=None, update=None):
+    """Unified helper to call mongo_crud without specifying host/port."""
+    return mongo_crud(
+        host=None,
+        port=None,
+        db_name=DB_NAME,
+        collection_name=collection_name,
+        operation=operation,
+        query=query or {},
+        update=update or {}
+    )
 
-    """
+def load_faiss_index(chatbot_id, version_id):
+    """Load the FAISS index fresh from disk each call."""
     faiss_index_dir = "/home/bramhesh_srivastav/platformdevelopment/faiss_indexes"
-    
-    # Create the unique index filename based on chatbot_id and version_id
-    # faiss_index_filename = f"{chatbot_id}_{version_id}_faiss_index"
     faiss_index_website = f"{chatbot_id}_{version_id}_faiss_index_website"
-
     faiss_path = os.path.join(faiss_index_dir, faiss_index_website)
-
-    # faiss_path = r"/home/bramhesh_srivastav/Platform_DataScience/website_faiss_index"
-    
     return FAISS.load_local(faiss_path, embedding_model, allow_dangerous_deserialization=True)
 
-# Function to Fetch Content from FAISS
-def search_vector_context(chatbot_id,version_id,query, k=30):
-    """
-    Fetch the vector content by performing a similarity search with a fresh FAISS index.
-    """
-    vectorstore = load_faiss_index(chatbot_id,version_id)  # Reload FAISS index each time
+def search_vector_context(chatbot_id, version_id, query, k=30):
+    """Perform similarity search with fresh FAISS index and aggregate results."""
+    vectorstore = load_faiss_index(chatbot_id, version_id)
     results = vectorstore.similarity_search(query, k=k)
     return "\n\n".join([doc.page_content for doc in results])
 
-# Function to Generate Handoff Guidance
 def generate_handoff_guidance(query, chatbot_id, version_id):
-    """
-    Generate structured handoff guidance using GPT-4o based on the query and optional context.
-    """
+    """Generate structured handoff guidance based on query and vectorstore context."""
     try:
-        # Attempt to retrieve context; may return None or empty string
         context = search_vector_context(chatbot_id, version_id, query)
-        
-        # If context is available, use context-based prompt
         if context and context.strip():
             prompt = f"""
 Use the following website content to explore the chatbot's knowledge base.
@@ -78,7 +69,6 @@ Inquiries Needing Deep Explanation from Website/YouTube
 Provide output in structured guidance points with section titles. Do not include ### or numbers anywhere. Use dashes for each item.
 """
         else:
-            # No context or empty context
             prompt = """
 You are an expert customer-experience designer tasked with creating comprehensive escalation guidelines for a support chatbot when no existing content is available. Generate a set of clear and concise guidelines for when the chatbot should hand off a conversation to a customer care representative. The guidelines should cover:
 
@@ -91,8 +81,7 @@ Inquiries Needing Deep Explanation
 Provide output in structured guidance points with section titles. Do not include ### or numbers anywhere. Use dashes for each item.
 """
     except Exception as e:
-        # Fallback to default prompt on any error retrieving context
-        print(f"Warning: could not retrieve context: {e}")
+        print(f"Warning: context retrieval failed: {e}")
         prompt = """
 You are an expert customer-experience designer tasked with creating comprehensive escalation guidelines for a support chatbot when no existing content is available. Generate a set of clear and concise guidelines for when the chatbot should hand off a conversation to a customer care representative. The guidelines should cover:
 
@@ -105,7 +94,6 @@ Inquiries Needing Deep Explanation
 Provide output in structured guidance points with section titles. Do not include ### or numbers anywhere. Use dashes for each item.
 """
 
-    # Call the GPT API
     response = client.chat.completions.create(
         model="gpt-4o",
         messages=[{"role": "user", "content": prompt}],
@@ -113,25 +101,27 @@ Provide output in structured guidance points with section titles. Do not include
     )
     guidance_text = response.choices[0].message.content
 
-    # Split the guidance text by blank lines into sections
+    # Split guidance by blank line sections
     sections = [sec.strip() for sec in guidance_text.split("\n\n") if sec.strip()]
 
-    # Build MongoDB documents for the first five sections
+    # Prepare documents for Mongo insertion
     guidance_entries = []
-    for idx, section in enumerate(sections[:5], start=1):
+    for section in sections[:5]:
+        lines = section.split("\n")
+        if not lines:
+            continue
         guidance_entries.append({
             "chatbot_id": ObjectId(chatbot_id),
             "version_id": ObjectId(version_id),
-            "section_title": section.split("\n", 1)[0].strip(),
-            "description": "\n".join(section.split("\n")[1:]).strip(),
+            "section_title": lines[0].strip(),
+            "description": "\n".join(lines[1:]).strip(),
             "category_name": "handoff",
             "source_type": "ai",
             "is_enabled": False
         })
 
-    # Insert into MongoDB if any entries exist
     if guidance_entries:
-        collection.insert_many(guidance_entries)
-        print(f"Inserted {len(guidance_entries)} handoff's into MongoDB.")
+        mongo_operation(operation="insertmany", collection_name=COLLECTION_HANDOFF, query=guidance_entries)
+        print(f"Inserted {len(guidance_entries)} handoff guidance entries into MongoDB.")
 
     return guidance_entries

@@ -16,7 +16,7 @@ from langchain_community.vectorstores import FAISS
 from langchain_openai import OpenAIEmbeddings
 from langgraph.graph import START, StateGraph
 from utility.retrain_bot import fetch_data
-from Databases.mongo import Bot_Retrieval, company_Retrieval
+from Databases.mongo_db import Bot_Retrieval, company_Retrieval
 
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
