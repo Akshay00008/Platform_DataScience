@@ -210,7 +210,7 @@ Here is an example format of the JSON output:
         )
         category = response.choices[0].message.content.strip()
 
-        print("Raw output:\n", category)
+        # print("Raw output:\n", category)
 
         # Clean the string: Remove markdown and extra characters like backticks
         cleaned_category = re.sub(r'```json|```', '', category).strip()
@@ -218,7 +218,7 @@ Here is an example format of the JSON output:
         # Try parsing the cleaned JSON string
         category_obj = json.loads(cleaned_category)
 
-        print("Parsed JSON object:\n", category_obj)
+        # print("Parsed JSON object:\n", category_obj)
 
     except json.JSONDecodeError as e:
         logging.error(f"JSON Decode Error: {e}")
@@ -228,7 +228,7 @@ Here is an example format of the JSON output:
         category_obj = {}
 
 
-        print("Parsed JSON object:\n", category_obj)
+        # print("Parsed JSON object:\n", category_obj)
 
     except json.JSONDecodeError as e:
         logging.error(f"JSON Decode Error: {e}")
