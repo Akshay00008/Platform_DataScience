@@ -204,25 +204,23 @@ Here is an example format of the JSON output:
 
     try:
         response = client.chat.completions.create(
-        model="gpt-4o-mini",
-        messages=[{"role": "user", "content": prompt}],
-        temperature=0.3,
+            model="gpt-4o-mini",
+            messages=[{"role": "user", "content": prompt}],
+            temperature=0.3,
         )
         category = response.choices[0].message.content.strip()
 
         print("Raw output:\n", category)
-
-        json_str_match = re.search(r"``````", category, re.DOTALL)
+        
+        json_str_match = re.search(r"``````", category)
         if json_str_match:
             json_str = json_str_match.group(1)
         else:
-        # If regex did not match, assume whole string might be JSON or fallback empty
-            json_str = category
-
-        print("Extracted JSON string:\n", json_str)
-
-        category_obj = json.loads(json_str)
+            json_str = category  # fallback
         
+        print("Extracted JSON string:\n", json_str)
+        category_obj = json.loads(json_str)
+
     except Exception as e:
         logging.error(f"Failed to generate or parse tags and buckets: {e}")
         category_obj = {}
