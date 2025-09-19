@@ -161,7 +161,7 @@ def chatbot(chatbot_id: str, version_id: str, prompt: str, user_id: str) -> str:
         converstation_history = converstation_state[user_id]
         converstation_state[user_id].append({'role': 'user', 'content': prompt})
 
-        handoff_descs = [d.get("description", "").lower() for d in guidelines.get("handoffscenarios", [])]
+        handoff_descs = [d.get("description", "").lower() for d in guidelines.get("handoffscenarios","handoffbuzzwords", [])]
         handoff_keywords = [
             "fire", "melt", "burned", "melted", "burned up",
             "new product", "not present in your list",
