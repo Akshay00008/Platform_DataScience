@@ -14,7 +14,7 @@ from Databases.mongo import mongo_crud
 load_dotenv()
 
 # Constants
-DB_NAME = "ChatbotDB-DEV"
+
 COLLECTION_FAQS = "faqs"
 COLLECTION_CATALOGUE = "catelogue"
 
@@ -27,9 +27,7 @@ embedding_model = OpenAIEmbeddings(model="text-embedding-3-large")
 def mongo_operation(operation, collection_name=COLLECTION_FAQS, query=None, update=None, start=0, stop=10):
     """Helper to call mongo_crud with fixed db and no host/port needed."""
     return mongo_crud(
-        host=None,
-        port=None,
-        db_name=DB_NAME,
+        
         collection_name=collection_name,
         operation=operation,
         query=query or {},
@@ -37,7 +35,6 @@ def mongo_operation(operation, collection_name=COLLECTION_FAQS, query=None, upda
         start=start,
         stop=stop
     )
-
 def load_faiss_index(chatbot_id, version_id, target_vector):
     faiss_index_dir = "/home/bramhesh_srivastav/platformdevelopment/faiss_indexes"
     faiss_index_filename = f"{chatbot_id}_{version_id}_faiss_index"
@@ -255,9 +252,7 @@ Here is an example format of the JSON output:
 
     try:
         result = mongo_crud(
-            host=None,
-            port=None,
-            db_name=DB_NAME,
+            
             collection_name=collection_name,
             operation="create",
             query=document

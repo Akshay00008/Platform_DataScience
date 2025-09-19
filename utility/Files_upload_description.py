@@ -35,15 +35,13 @@ client = OpenAI(api_key=openai_api_key)
 text_splitter = CharacterTextSplitter(chunk_size=1000, chunk_overlap=200)
 
 # Database and collection constants
-DB_NAME = "ChatbotDB-DEV"
+#DB_NAME = "ChatbotDB-DEV"
 COLLECTION_FILES = "files"
 
 def mongo_operation(operation, collection_name=COLLECTION_FILES, query=None, update=None, start=0, stop=10):
     """Wrapper to call mongo_crud with fixed DB name, no need for host/port."""
     return mongo_crud(
-        host=None,  # ignored or default inside mongo_crud
-        port=None,
-        db_name=DB_NAME,
+       
         collection_name=collection_name,
         operation=operation,
         query=query or {},

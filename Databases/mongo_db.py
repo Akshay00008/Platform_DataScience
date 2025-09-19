@@ -4,8 +4,7 @@ from bson.json_util import dumps
 from Databases.mongo import mongo_crud
 
 
-DB_NAME_CHATBOT = "ChatbotDB-DEV"
-DB_NAME_BACKUP = "Chatbot-Backup"
+
 
 
 def Bot_Retrieval(chatbot_id, version_id):
@@ -19,9 +18,7 @@ def Bot_Retrieval(chatbot_id, version_id):
     query = {"chatbot_id": chatbot_obj_id, "version_id": version_obj_id}
 
     documents = mongo_crud(
-        host=None,
-        port=None,
-        db_name=DB_NAME_CHATBOT,
+       
         collection_name='chatbotversions',
         operation='read',
         query=query
@@ -52,9 +49,7 @@ def website_tag_saving(website_taggers, chatbot_id=None, version_id=None):
     if isinstance(website_taggers, list):
         # Insert many
         mongo_crud(
-            host=None,
-            port=None,
-            db_name=DB_NAME_BACKUP,
+           
             collection_name='website_tags',
             operation='insertmany',
             query=website_taggers
@@ -62,9 +57,7 @@ def website_tag_saving(website_taggers, chatbot_id=None, version_id=None):
     else:
         # Insert one
         mongo_crud(
-            host=None,
-            port=None,
-            db_name=DB_NAME_BACKUP,
+          
             collection_name='website_tags',
             operation='create',
             query=website_taggers
@@ -75,9 +68,7 @@ def website_tag_saving(website_taggers, chatbot_id=None, version_id=None):
 
 def company_Retrieval():
     documents = mongo_crud(
-        host=None,
-        port=None,
-        db_name=DB_NAME_BACKUP,
+      
         collection_name='companies',
         operation='read'
     )

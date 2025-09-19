@@ -37,7 +37,7 @@ def create_documents(faqs):
 
 def main():
     MONGO_URI = "mongodb://dev:N47309HxFWE2Ehc@35.209.224.122:27017"
-    DB_NAME = "ChatbotDB"
+    #DB_NAME = "ChatbotDB"
     COLLECTION_NAME = "faqs"
     # These must be valid ObjectId strings from your MongoDB collection
     CHATBOT_ID_STR = "6842906726c8b20f873bee6b"

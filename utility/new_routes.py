@@ -29,15 +29,13 @@ active_threads = 0
 lock = Lock()
 sync_info = {"chatbot_id": None, "version_id": None}
 
-DB_NAME = "ChatbotDB-DEV"
+#DB_NAME = "ChatbotDB-DEV"
 COLLECTION_CHATBOTVERSIONS = "chatbotversions"
 
 def mongo_operation(operation, collection_name=COLLECTION_CHATBOTVERSIONS, query=None, update=None):
     """Centralized helper for mongo_crud calls."""
     return mongo_crud(
-        host=None,
-        port=None,
-        db_name=DB_NAME,
+       
         collection_name=collection_name,
         operation=operation,
         query=query or {},

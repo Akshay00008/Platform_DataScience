@@ -29,7 +29,7 @@ load_dotenv()
 encoding = tiktoken.get_encoding("cl100k_base")
 MAX_TOKEN_LIMIT = 3_000_000
 
-DB_NAME = "ChatbotDB-DEV"
+#DB_NAME =  "ChatbotDB-DEV"
 TOKEN_COLLECTION = "token_tracker"
 
 def safe_objectid(value):
@@ -44,9 +44,7 @@ def count_tokens(text: str) -> int:
 def mongo_operation(operation, collection_name, query=None, update=None, start=0, stop=10):
     """Centralized call to mongo_crud without specifying host/port."""
     return mongo_crud(
-        host=None,
-        port=None,
-        db_name=DB_NAME,
+       
         collection_name=collection_name,
         operation=operation,
         query=query or {},

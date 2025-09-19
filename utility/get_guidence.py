@@ -3,7 +3,7 @@ import pprint
 from Databases.mongo import mongo_crud
 
 # Constants for DB and collections
-DB_NAME = "ChatbotDB-DEV"
+#DB_NAME = "ChatbotDB-DEV"
 COLLECTION_GUIDANCE = "guidanceflows"
 COLLECTION_HANDOFF = "handoffscenarios"
 
@@ -13,27 +13,21 @@ def mongo_operation(collection_name, operation, query=None, projection=None):
         # mongo_crud 'readV2' supports projection (filter, projection)
         if projection:
             return mongo_crud(
-                host=None,
-                port=None,
-                db_name=DB_NAME,
+               
                 collection_name=collection_name,
                 operation="readV2",
                 query=[query or {}, projection]
             )
         else:
             return mongo_crud(
-                host=None,
-                port=None,
-                db_name=DB_NAME,
+               
                 collection_name=collection_name,
                 operation=operation,
                 query=query or {}
             )
     else:
         return mongo_crud(
-            host=None,
-            port=None,
-            db_name=DB_NAME,
+           
             collection_name=collection_name,
             operation=operation,
             query=query or {}

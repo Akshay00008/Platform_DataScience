@@ -15,7 +15,7 @@ client = OpenAI(api_key=openai_api_key)
 embedding_model = OpenAIEmbeddings(model="text-embedding-3-large")
 
 # Constants for DB and collection
-DB_NAME = "ChatbotDB-DEV"
+#DB_NAME = "ChatbotDB-DEV"
 COLLECTION_GUIDANCE = "guidanceflows"
 
 def mongo_operation(operation, collection_name=COLLECTION_GUIDANCE, query=None, update=None):

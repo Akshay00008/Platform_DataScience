@@ -116,7 +116,7 @@ from Databases.mongo import mongo_crud
 load_dotenv()
 
 # MongoDB constants
-DB_NAME = "ChatbotDB-DEV"
+#DB_NAME = "ChatbotDB-DEV"
 COLLECTION_YOUTUBE = "youtube_data"
 
 # Chatbot and version IDs (replace with actual ObjectId strings)
@@ -142,9 +142,7 @@ def insert_video_to_db(video_data):
     """Insert video document into MongoDB youtube_data collection using mongo_crud."""
     try:
         result = mongo_crud(
-            host=None,
-            port=None,
-            db_name=DB_NAME,
+            
             collection_name=COLLECTION_YOUTUBE,
             operation='create',
             query=video_data

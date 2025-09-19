@@ -9,7 +9,7 @@ from Databases.mongo import mongo_crud  # centralized mongo_crud import
 
 
 # ==== CONFIG ====
-DB_NAME = "ChatbotDB-DEV"
+#DB_NAME = "ChatbotDB-DEV"
 VECTOR_DB_PATH = "faiss_index_faq"
 COLLECTION_GUIDANCE = "guidanceflows"
 COLLECTION_HANDOFF = "handoffscenarios"
@@ -24,18 +24,14 @@ def mongo_operation(operation, collection_name, query=None, projection=None, upd
     if operation == "read" and projection is not None:
         # Use 'readV2' operation for filter + projection queries
         return mongo_crud(
-            host=None,
-            port=None,
-            db_name=DB_NAME,
+           
             collection_name=collection_name,
             operation="readV2",
             query=[query or {}, projection]
         )
     else:
         return mongo_crud(
-            host=None,
-            port=None,
-            db_name=DB_NAME,
+         
             collection_name=collection_name,
             operation=operation,
             query=query or {},

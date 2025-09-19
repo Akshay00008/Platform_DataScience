@@ -18,15 +18,13 @@ client = OpenAI(api_key=openai_api_key)
 embedding_model = OpenAIEmbeddings(model="text-embedding-3-large")
 
 # Constants for DB and collection
-DB_NAME = "ChatbotDB-DEV"
+#DB_NAME = "ChatbotDB-DEV"
 COLLECTION_HANDOFF = "handoffscenarios"
 
 def mongo_operation(operation, collection_name=COLLECTION_HANDOFF, query=None, update=None):
     """Unified helper to call mongo_crud without specifying host/port."""
     return mongo_crud(
-        host=None,
-        port=None,
-        db_name=DB_NAME,
+       
         collection_name=collection_name,
         operation=operation,
         query=query or {},
