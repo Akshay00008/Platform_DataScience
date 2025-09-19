@@ -1,9 +1,14 @@
 import os
 import pymongo
+from dotenv import load_dotenv
+
+load_dotenv()
+
 
 # Read full connection string from backend-secrets
 MONGODB_URI = os.getenv("MONGODB_URI")
 DB_NAME = os.getenv("DB_NAME", "defaultdb")
+
 
 def mongo_crud(collection_name, operation, query={}, update={}, start=0, stop=10, projection=None):
     if not MONGODB_URI:
