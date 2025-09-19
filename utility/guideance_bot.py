@@ -21,9 +21,7 @@ COLLECTION_GUIDANCE = "guidanceflows"
 def mongo_operation(operation, collection_name=COLLECTION_GUIDANCE, query=None, update=None):
     """Wrapper for mongo_crud without explicit host/port."""
     return mongo_crud(
-        host=None,
-        port=None,
-        db_name=DB_NAME,
+      
         collection_name=collection_name,
         operation=operation,
         query=query or {},
