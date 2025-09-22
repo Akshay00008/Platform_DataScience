@@ -112,7 +112,7 @@ Provide output in structured guidance points with section titles. Do not include
             "chatbot_id": ObjectId(chatbot_id),
             "version_id": ObjectId(version_id),
             "section_title": lines[0].strip(),
-            "description": "\n".join(lines[1:]).strip(),
+            "description": "\n".join(lines[0:]).strip(),
             "category_name": "New",
             "source_type": "ai",
             "is_enabled": False

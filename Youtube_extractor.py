@@ -16,8 +16,7 @@ if not API_KEY:
     raise ValueError("YOUTUBE_API_KEY is not set in environment variables")
 
 # MongoDB setup from external mongo.py
-client = get_mongo_client()  # Method in mongo.py should return MongoClient connected instance
-db = client['ChatbotDB-DEV']  # Use actual DB name
+client = get_mongo_client()  # Method in mongo.py should return MongoClient connected instance  # Use actual DB name
 collection = db['videos']      # Use actual collection name
 
 

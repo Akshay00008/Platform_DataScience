@@ -88,6 +88,13 @@ Content is provided between "--- Content ---" and "----------------":
 ----------------
 
 Please extract and format the operational behavioral guidelines from the above content.
+
+No content is provided. In this case, generate a comprehensive set of standard operational behavioral guidelines suitable for a professional company assistant bot. Ensure all four required sections are filled with realistic, industry-appropriate rules, without leaving any section empty or giving 
+Donot provide responses like this 
+"- No specific communication standards were outlined in the provided content."
+
+give some content in each section.No Empty content in any section.responses like this 
+"- No specific communication standards were outlined in the provided content."
 """
     else:
         prompt = base_prompt + """
