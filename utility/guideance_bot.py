@@ -70,26 +70,6 @@ Formatting Requirements:
 - List guidelines using dashes (-) for each item
 - Maintain the exact wording from the source content
 - Do not add, interpret, or modify the original guidelines
-
-Example Output Format:
-
-Response Scope
-- Only respond to queries directly related to [Company/Product Name]
-- Do not answer questions unrelated to company offerings
-
-Prohibited Topics and Actions
-- Never discuss pricing or payments
-- Do not provide legal advice
-
-Redirection Procedures
-- Redirect billing questions to customer care
-- Forward legal inquiries to the company's legal department
-
-Communication Standards
-- Maintain professional and respectful language
-- Reference only official company documentation in responses
-
-Important: Extract and present guidelines exactly as written in the source material. Do not summarize, paraphrase, or add interpretative content.
 """
 
     if content and content.strip():
@@ -112,8 +92,11 @@ Please extract and format the operational behavioral guidelines from the above c
     else:
         prompt = base_prompt + """
 
-Since no specific content is provided, generate a comprehensive set of standard operational behavioral guidelines that would be appropriate for a professional company assistant bot. Create realistic guidelines covering all four required sections while maintaining the specified formatting requirements.
+No content is provided. In this case, generate a comprehensive set of standard operational behavioral guidelines suitable for a professional company assistant bot. Ensure all four required sections are filled with realistic, industry-appropriate rules, without leaving any section empty.
 """
+
+    
+
 
     response = client.chat.completions.create(
         model="gpt-4o",
