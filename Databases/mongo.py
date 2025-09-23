@@ -10,7 +10,7 @@ MONGODB_URI = os.getenv("MONGODB_URI")
 DB_NAME = os.getenv("DB_NAME", "defaultdb")
 
 
-def mongo_crud(collection_name, operation, query={}, update={}, start=0, stop=10, projection=None):
+def mongo_crud(collection_name, operation, query={}, update={}, start=0, stop=10, projection=None, **kwargs):
     if not MONGODB_URI:
         raise RuntimeError("MONGODB_URI environment variable is not set")
 
@@ -33,9 +33,9 @@ def mongo_crud(collection_name, operation, query={}, update={}, start=0, stop=10
     elif operation == "findone":
         return collection.find_one(query)
     elif operation == "update":
-        return collection.find_one_and_update(query, {"$set": update})
+        return collection.find_one_and_update(query, {"$set": update}, **kwargs)
     elif operation == "updatemany":
-        return collection.update_many(query, update=update)
+        return collection.update_many(query, update=update, **kwargs)
     elif operation == "delete":
         return collection.delete_one(query).deleted_count
     elif operation == "deletemany":
