@@ -264,8 +264,11 @@ def faqs_endpoint():
     try:
         top_chunks = bots.search_faiss(query, faisll_load, k=top_k)
         extracted_faq_text = bots.extract_existing_faqs(top_chunks)
+        print("267")
         extracted_faqs = bots.parse_faq_text(extracted_faq_text)
+        print("269")
         inserted_existing_count = bots.save_faqs_to_mongo(extracted_faqs, chatbot_id, version_id)
+        print("271")
         generated_faq_text = bots.generate_faqs_from_vectors(top_chunks, target_count=generated_faq_count)
         print(generated_faq_text)
         generated_faqs = bots.parse_faq_text(generated_faq_text)
