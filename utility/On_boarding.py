@@ -270,7 +270,7 @@ def Personal_chatbot(conversation_history: List[dict], prompt: str, languages: L
         try:
             import os
 
-            faiss_dir = "/home/bramhesh_srivastav/platformdevelopment/faiss_indexes"
+            faiss_dir = "/home/bramhesh_srivastav/Platform_DataScience/faiss_indexes"
             faiss_file_1 = f"{chatbot_id}_{version_id}_faiss_index"
             faiss_file_2 = f"{chatbot_id}_{version_id}_faiss_index_website"
             path1 = os.path.join(faiss_dir, faiss_file_1)

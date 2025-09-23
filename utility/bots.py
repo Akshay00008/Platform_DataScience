@@ -36,7 +36,7 @@ def mongo_operation(operation, collection_name=COLLECTION_FAQS, query=None, upda
         stop=stop
     )
 def load_faiss_index(chatbot_id, version_id, target_vector):
-    faiss_index_dir = "/home/bramhesh_srivastav/platformdevelopment/faiss_indexes"
+    faiss_index_dir = "/home/bramhesh_srivastav/Platform_DataScience/faiss_indexes"
     faiss_index_filename = f"{chatbot_id}_{version_id}_faiss_index"
     faiss_index_website = f"{chatbot_id}_{version_id}_faiss_index_website"
     faiss_path_1 = os.path.join(faiss_index_dir, faiss_index_filename)    

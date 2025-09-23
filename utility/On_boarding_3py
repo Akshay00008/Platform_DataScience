@@ -235,7 +235,7 @@ def Personal_chatbot(converstation_history: List[dict], prompt: str, languages: 
             logger.info("Using cached retrieval results")
             return {"context": retrieval_cache[cache_key]}
         try:
-            faiss_index_dir = "/home/bramhesh_srivastav/platformdevelopment/faiss_indexes"
+            faiss_index_dir = "/home/bramhesh_srivastav/Platform_DataScience/faiss_indexes"
             faiss_index_filename = f"{chatbot_id}_{version_id}_faiss_index"
             faiss_index_website = f"{chatbot_id}_{version_id}_faiss_index_website"
             faiss_path_1 = os.path.join(faiss_index_dir, faiss_index_filename)

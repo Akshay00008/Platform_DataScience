@@ -340,7 +340,7 @@ def read_documents_from_gcs(bucket_name: str, blob_names: List[str]) -> List[str
 
 def load_or_create_faiss_index(docs: List[str], chatbot_id: str, version_id: str) -> str:
     try:
-        index_dir = "/home/bramhesh_srivastav/platformdevelopment/faiss_indexes"  # Directory to store FAISS indexes
+        index_dir = "/home/bramhesh_srivastav/Platform_DataScience/faiss_indexes"  # Directory to store FAISS indexes
         
         os.makedirs(index_dir, exist_ok=True)
 
@@ -453,7 +453,7 @@ def embeddings_from_website_content(json_data,  chatbot_id, version_id):
     faiss_index = FAISS.from_texts(text_chunks, embeddings, metadatas=chunk_metadata)
  
     # Save index and metadata
-    index_dir  = "/home/bramhesh_srivastav/platformdevelopment/faiss_indexes"  # Directory where indexes will be saved
+    index_dir  = "/home/bramhesh_srivastav/Platform_DataScience/faiss_indexes"  # Directory where indexes will be saved
     os.makedirs(index_dir, exist_ok=True)
     # Generate a unique index filename based on chatbot_id and version_id
     index_filename = f"{chatbot_id}_{version_id}_faiss_index_website"
