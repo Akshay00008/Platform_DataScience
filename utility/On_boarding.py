@@ -20,7 +20,6 @@ from utility.retrain_bot import fetch_data
 from Databases.mongo_db import Bot_Retrieval, company_Retrieval
 from Databases.mongo import mongo_crud  # Centralized mongo_crud import
 
-
 # Configure logging
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
@@ -38,8 +37,13 @@ encoding = tiktoken.get_encoding("cl100k_base")
 
 def safe_objectid(value):
     try:
-        return ObjectId(value)
-    except Exception:
+        if ObjectId.is_valid(value):
+            return ObjectId(value)
+        else:
+            logger.warning(f"Value is not a valid ObjectId: {value}. Using original value instead.")
+            return value
+    except Exception as e:
+        logger.warning(f"Exception in safe_objectid: {e}. Using original value: {value}")
         return value
 
 
@@ -73,7 +77,7 @@ def get_token_usage_from_mongo(chatbot_id: str) -> int:
 def update_token_usage_in_mongo(chatbot_id: str, tokens_used: int):
     try:
         _id = safe_objectid(chatbot_id)
-        mongo_operation(
+        result = mongo_operation(
             "update",
             TOKEN_COLLECTION,
             query={"chatbot_id": _id},
@@ -83,7 +87,11 @@ def update_token_usage_in_mongo(chatbot_id: str, tokens_used: int):
                 "$setOnInsert": {"token_limit": MAX_TOKEN_LIMIT}
             }
         )
+        # If possible, check if update was acknowledged
+        if not result or (hasattr(result, 'modified_count') and result.modified_count == 0):
+            logger.warning(f"No documents updated for chatbot_id {_id}")
     except Exception as e:
+        # Log error but do not stop execution
         logger.error(f"Error updating token usage: {e}")
 
 
@@ -257,10 +265,12 @@ def Personal_chatbot(conversation_history: List[dict], prompt: str, languages: L
                      tone_and_style: str, greeting: str, guidelines: dict, company_info: str,
                      chatbot_id: str, version_id: str, user_id: str) -> str:
 
+
     class State(TypedDict):
         question: str
         context: List[Document]
         answer: str
+
 
     def retrieve(state: State) -> dict:
         cache_key = (chatbot_id, version_id, state["question"].lower())
@@ -329,6 +339,7 @@ def Personal_chatbot(conversation_history: List[dict], prompt: str, languages: L
             logger.error(f"Error retrieving documents: {e}")
             return {"context": []}
 
+
     def generate(state: State) -> dict:
         try:
             docs_content = "\n\n".join(doc.page_content for doc in state["context"])
@@ -367,6 +378,7 @@ def Personal_chatbot(conversation_history: List[dict], prompt: str, languages: L
         except Exception as e:
             logger.error(f"Error generating LLM response: {e}")
             return {"answer": "Sorry, something went wrong generating the response."}
+
 
     try:
         graph_builder = StateGraph(State).add_sequence([retrieve, generate])
