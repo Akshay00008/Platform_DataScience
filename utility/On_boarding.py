@@ -1,283 +1,233 @@
 import os
-import getpass
+import re
+import json
 import logging
+import getpass
 from typing import List, Optional, TypedDict
 from datetime import datetime
-from dotenv import load_dotenv
+from pymongo import errors
 from bson import ObjectId
 import numpy as np
 import tiktoken
+from dotenv import load_dotenv
 
 from langchain.chat_models import init_chat_model
 from langchain_core.messages import HumanMessage, SystemMessage
 from langchain_core.documents import Document
-from langchain_community.vectorstores import FAISS
+from langchain.community.vectorstores import FAISS
 from langchain_openai import OpenAIEmbeddings
 from langgraph.graph import START, StateGraph
+
 from utility.retrain_bot import fetch_data
 from Databases.mongo_db import Bot_Retrieval, company_Retrieval
-from Databases.mongo import mongo_crud  # for other Mongo queries except token update
+from Databases.mongo import mongo, DB_NAME  # Import centralized Mongo client and DB_NAME
+import utility.bots as bots
 
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
 load_dotenv()
 
-# Token counting setup
 encoding = tiktoken.get_encoding("cl100k_base")
 MAX_TOKEN_LIMIT = 3_000_000
 
-# Mongo token usage constants (for token usage only)
-from token_usage_mongo import get_token_usage_from_mongo, update_token_usage_in_mongo  # import from the token usage module you supplied
+# Singleton MongoDB client from mongo.py
+def safe_objectid(value):
+    try:
+        return ObjectId(value)
+    except Exception:
+        return value
 
+def count_tokens(text: str) -> int:
+    return len(encoding.encode(text))
+
+def get_token_usage_from_mongo(chatbot_id: str) -> int:
+    try:
+        client = mongo  # from mongo.py, singleton client
+        db = client[DB_NAME]
+        collection = db['token_tracker']
+        _id = safe_objectid(chatbot_id)
+        record = collection.find_one({"chatbot_id": _id})
+        if record and "total_tokens" in record:
+            return record["total_tokens"]
+        return 0
+    except Exception as e:
+        logger.error(f"Error fetching token usage: {e}")
+        return 0
+
+def update_token_usage_in_mongo(chatbot_id: str, tokens_used: int):
+    try:
+        client = mongo
+        db = client[DB_NAME]
+        collection = db['token_tracker']
+        _id = safe_objectid(chatbot_id)
+        collection.update_one(
+            {"chatbot_id": _id},
+            {
+                "$inc": {"total_tokens": tokens_used},
+                "$set": {"last_updated_at": datetime.utcnow()},
+                "$setOnInsert": {"token_limit": MAX_TOKEN_LIMIT}
+            },
+            upsert=True
+        )
+    except Exception as e:
+        logger.error(f"Error updating token usage: {e}")
+
+# Setup OpenAI client and embeddings
 try:
-    if not os.environ.get("OPENAI_API_KEY"):
-        os.environ["OPENAI_API_KEY"] = getpass.getpass("Enter API key for OpenAI:")
+    if not os.getenv("OPENAI_API_KEY"):
+        os.environ["OPENAI_API_KEY"] = getpass.getpass("Enter your OpenAI API key: ")
     embeddings = OpenAIEmbeddings(model="text-embedding-3-large")
-    api = os.getenv('OPENAI_API_KEY')
-    model = os.getenv('GPT_model')
-    model_provider = os.getenv('GPT_model_provider')
-    if not api or not model or not model_provider:
-        raise ValueError("Please check the OPENAI_API_KEY, GPT_model, and GPT_model_provider.")
+    api_key = os.getenv("OPENAI_API_KEY")
+    model_name = os.getenv("GPT_model")
+    model_provider = os.getenv("GPT_provider")
+    if not api_key or not model_name or not model_provider:
+        raise ValueError("Missing OpenAI API key or model config in environment.")
 except Exception as e:
-    logger.error(f"Initialization failed: {e}")
+    logger.error(f"Initialization error: {e}")
     raise
 
-def cosine_similarity(vec1: List[float], vec2: List[float]) -> float:
-    v1, v2 = np.array(vec1), np.array(vec2)
-    dot = np.dot(v1, v2)
-    norm1, norm2 = np.linalg.norm(v1), np.linalg.norm(v2)
-    if norm1 == 0 or norm2 == 0:
-        return 0.0
-    return dot / (norm1 * norm2)
+llm = init_chat_model(model_name, model_provider=model_provider)
 
-def check_fixscenarios(user_query: str, similarity_threshold: float = 0.9) -> Optional[str]:
-    try:
-        scenarios = mongo_crud(
-            collection_name="fixscenarios",
-            operation="read"
-        )
-        if not scenarios:
-            return None
-        query_vec = embeddings.embed_query(user_query)
-        for scenario in scenarios:
-            ques = scenario.get("customer_question", "")
-            if not ques:
-                continue
-            scenario_vec = embeddings.embed_query(ques)
-            score = cosine_similarity(query_vec, scenario_vec)
-            if score > similarity_threshold:
-                return scenario.get("corrected_response")
-        return None
-    except Exception as err:
-        logger.error(f"Error during fixscenarios semantic check: {err}")
-        return None
-
-llm = init_chat_model(model, model_provider=model_provider)
-
-conversation_state: dict[str, List[dict]] = {}
+converstation_state: dict[str, List[dict]] = {}
 retrieval_cache: dict[tuple, List[Document]] = {}
 llm_response_cache: dict[tuple, str] = {}
 
 def chatbot(chatbot_id: str, version_id: str, prompt: str, user_id: str) -> str:
     try:
-        # Check token usage limit via token usage module
-        current_token_usage = get_token_usage_from_mongo(chatbot_id)
-        if current_token_usage >= MAX_TOKEN_LIMIT:
-            warning_msg = "Token usage limit exceeded for this chatbot. Please try again later."
+        # Check token usage limits
+        current_usage = get_token_usage_from_mongo(chatbot_id)
+        if current_usage >= MAX_TOKEN_LIMIT:
+            warning_msg = "Token limit exceeded for this chatbot. Please try again later."
             logger.warning(warning_msg)
             return warning_msg
 
-        request_body = {
-            "chatbot_id": chatbot_id,
-            "version_id": version_id,
-            "collection_name": ["guidance", "handoff", "handoffbuzzwords"]
-        }
-        guidelines = fetch_data(request_body)
-        logger.debug(f"Guidelines: {guidelines}")
+        # Fetch guidance and handoff data
+        request = {"chatbot_id": chatbot_id, "version_id": version_id, "collection_name": ["guidance", "handoff"]}
+        guidelines = fetch_data(request)
 
-        Bot_information = Bot_Retrieval(chatbot_id, version_id)
-        bot_company = company_Retrieval()
+        bot_info = Bot_Retrieval(chatbot_id, version_id)
+        company_info = company_Retrieval()
 
-        if user_id not in conversation_state:
-            conversation_state[user_id] = []
-        conversation_state[user_id].append({'role': 'user', 'content': prompt})
+        if user_id not in converstation_state:
+            converstation_state[user_id] = [{"role": "user", "content": prompt}]
+        else:
+            converstation_state[user_id].append({"role": "user", "content": prompt})
 
-        prompt_lower = prompt.lower()
+        # Handoff keyword detection
         handoff_descs = [d.get("description", "").lower() for d in guidelines.get("handoffscenarios", [])]
-        handoffbuzzwords_raw = guidelines.get("handoffbuzzwords", [])
-        handoff_buzzwords = []
-        for bw_item in handoffbuzzwords_raw:
-            buzzwords_list = bw_item.get("buzzwords", [])
-            handoff_buzzwords.extend([bw.lower() for bw in buzzwords_list])
-        handoff_buzzwords = list(set(handoff_buzzwords))  # deduplicate
-
-        base_handoff_keywords = [
+        handoff_keywords = [
             "fire", "melt", "burned", "melted", "burned up",
             "new product", "not present in your list",
             "price", "pricing",
             "speak with a live agent", "unable to resolve", "live agent"
         ]
-        handoff_keywords = base_handoff_keywords + handoff_buzzwords
-
+        prompt_lower = prompt.lower()
         if any(kw in prompt_lower for kw in handoff_keywords) or \
            any(desc and (desc in prompt_lower or prompt_lower in desc) for desc in handoff_descs):
-            handoff_response = "Let's get you connected to one of our live agents so they can assist you further. Would it be okay if I connect you now?"
-            conversation_state[user_id].append({'role': 'bot', 'content': handoff_response})
-            return handoff_response
+            response = "Let's get you connected to a live agent. May I connect you now?"
+            converstation_state[user_id].append({"role": "bot", "content": response})
+            return response
 
-        fix_response = check_fixscenarios(prompt)
-        if fix_response:
-            conversation_state[user_id].append({'role': 'bot', 'content': fix_response})
-            return fix_response
+        # Semantic fix check
+        fix_resp = check_fixscenarios(prompt)
+        if fix_resp:
+            converstation_state[user_id].append({"role": "bot", "content": fix_resp})
+            return fix_resp
 
-        greeting = Bot_information[0].get('greeting_message', "Hello!")
-        purpose = Bot_information[0].get('purpose',
-                                         "You are an AI assistant helping users with their queries on behalf of the organization. "
-                                         "You provide clear and helpful responses while avoiding personal details and sensitive data.")
-        languages = Bot_information[0].get('supported_languages', ["English"])
-        tone_and_style = Bot_information[0].get('tone_style', "Friendly and professional")
-        company_info = bot_company[0].get('bot_company',
-                                         "You are an AI assistant representing the organization. "
-                                         "Your task is to help customers with their needs and guide them with relevant information, "
-                                         "without disclosing personal user data or sensitive company records.")
+        greeting = bot_info[0].get("greeting_message", "Hello!")
+        purpose = bot_info[0].get("purpose", "You are an AI assistant.")
+        languages = bot_info[0].get("supported_languages", ["English"])
+        tone = bot_info[0].get("tone_style", "Friendly and professional")
+        company_desc = company_info[0].get("bot_company", "You are an AI assistant.")
 
-        cache_key_llm = (user_id, chatbot_id, version_id, prompt_lower)
-        if cache_key_llm in llm_response_cache:
-            logger.info("Returning cached LLM response")
-            return llm_response_cache[cache_key_llm]
+        cache_key = (user_id, chatbot_id, version_id, prompt.lower())
+        if cache_key in llm_response_cache:
+            logger.info("Returning cached response")
+            return llm_response_cache[cache_key]
 
-        llm_response = Personal_chatbot(conversation_state[user_id], prompt, languages, purpose, tone_and_style,
-                                       greeting, guidelines, company_info, chatbot_id, version_id, user_id)
+        llm_response = Personal_chatbot(converstation_state[user_id], prompt, languages, purpose, tone, greeting, guidelines, company_desc, chatbot_id, version_id, user_id)
 
-        llm_response_cache[cache_key_llm] = llm_response
-        conversation_state[user_id].append({'role': 'bot', 'content': llm_response})
+        llm_response_cache[cache_key] = llm_response
+        converstation_state[user_id].append({"role": "bot", "content": llm_response})
+
         return llm_response
 
     except Exception as e:
-        logger.error(f"Error in chatbot function: {e}")
-        return f"An error occurred: {e}"
+        logger.error(f"Error in chatbot: {e}")
+        return f"Error: {e}"
 
-def Personal_chatbot(conversation_history: List[dict], prompt: str, languages: List[str], purpose: str,
-                     tone_and_style: str, greeting: str, guidelines: dict, company_info: str,
-                     chatbot_id: str, version_id: str, user_id: str) -> str:
-
+def Personal_chatbot(converstation_history: List[dict], prompt: str, languages: List[str], purpose: str, tone_style: str, greeting: str, guidelines: dict, company_info: str, chatbot_id: str, version_id: str, user_id: str):
     class State(TypedDict):
         question: str
         context: List[Document]
         answer: str
 
     def retrieve(state: State) -> dict:
-        cache_key = (chatbot_id, version_id, state['question'].lower())
+        cache_key = (chatbot_id, version_id, state["question"].lower())
         if cache_key in retrieval_cache:
-            logger.info("Using cached retrieval results")
+            logger.info("Using cached retrieval")
             return {"context": retrieval_cache[cache_key]}
         try:
-            faiss_dir = "/home/bramhesh_srivastav/Platform_DataScience/faiss_indexes"
-            faiss_file_1 = f"{chatbot_id}_{version_id}_faiss_index"
-            faiss_file_2 = f"{chatbot_id}_{version_id}_faiss_index_website"
-            path1 = os.path.join(faiss_dir, faiss_file_1)
-            path2 = os.path.join(faiss_dir, faiss_file_2)
-
-            vector_store_1 = None
-            vector_store_2 = None
-
-            if os.path.exists(path1):
-                vector_store_1 = FAISS.load_local(path1, embeddings, allow_dangerous_deserialization=True)
-                logger.info(f"Loaded FAISS index from {path1}")
-            else:
-                logger.info(f"FAISS index not found at {path1}")
-
-            if os.path.exists(path2):
-                vector_store_2 = FAISS.load_local(path2, embeddings, allow_dangerous_deserialization=True)
-                logger.info(f"Loaded FAISS index from {path2}")
-            else:
-                logger.info(f"FAISS index not found at {path2}")
-
-            if not vector_store_1 and not vector_store_2:
-                logger.error("No FAISS indexes loaded; returning empty context")
-                retrieval_cache[cache_key] = []
+            import os
+            base_dir = "/home/user/platform/faiss_indexes"
+            index_1 = os.path.join(base_dir, f"{chatbot_id}_{version_id}_faiss_index")
+            index_2 = os.path.join(base_dir, f"{chatbot_id}_{version_id}_faiss_index_website")
+            if not os.path.exists(index_1) or not os.path.exists(index_2):
+                logger.error("One or more FAISS indexes missing")
                 return {"context": []}
-
-            combined_docs = []
-            seen_ids = set()
-
-            if vector_store_1:
-                docs1 = vector_store_1.similarity_search(state["question"])
-                for d in docs1:
-                    doc_id = getattr(d, "id", None)
-                    if doc_id not in seen_ids:
-                        combined_docs.append(d)
-                        seen_ids.add(doc_id)
-
-            if vector_store_2:
-                docs2 = vector_store_2.similarity_search(state["question"])
-                for d in docs2:
-                    doc_id = getattr(d, "id", None)
-                    if doc_id not in seen_ids:
-                        combined_docs.append(d)
-                        seen_ids.add(doc_id)
-
-            retrieval_cache[cache_key] = combined_docs
-            return {"context": combined_docs}
+            store_1 = FAISS.load_local(index_1, embeddings, allow_dangerous_deserialization=True)
+            store_2 = FAISS.load_local(index_2, embeddings, allow_dangerous_deserialization=True)
+            docs_1 = store_1.similarity_search(state["question"])
+            docs_2 = store_2.similarity_search(state["question"])
+            combined = []
+            seen = set()
+            for d in docs_1 + docs_2:
+                if getattr(d, "id", None) not in seen:
+                    combined.append(d)
+                    seen.add(getattr(d, "id", None))
+            retrieval_cache[cache_key] = combined
+            return {"context": combined}
         except Exception as e:
-            logger.error(f"Error retrieving documents: {e}")
+            logger.error(f"Error in retrieve: {e}")
             return {"context": []}
 
     def generate(state: State) -> dict:
         try:
-            docs_content = "\n\n".join(doc.page_content for doc in state["context"])
+            content = "\n\n".join(doc.page_content for doc in state["context"])
             messages = [
-                SystemMessage(
-                    f"""
-                    Role: You are a personal chatbot with the purpose: {purpose}.
-                    Fluent in languages: {languages}.
-                    Greeting: {greeting}
-                    Conversation history: {conversation_history}
-                    Company info: {company_info}
-                    Context from documents: {docs_content}
-                    Maintain tone/style: {tone_and_style}
-                    Special keywords trigger connection to live agent.
-                    """
-                ),
+                SystemMessage(f"""
+                    You are an AI assistant with purpose: {purpose}.
+                    Languages supported: {languages}.
+                    Greeting: {greeting}.
+                    Conversation history: {converstation_history}.
+                    Context: {content}.
+                    Guidelines: {guidelines}.
+                    Style: {tone_style}.
+                    Company info: {company_info}.
+                    Respond with professionalism and according to guidelines.
+                """),
                 HumanMessage(state["question"])
             ]
-
-            input_text = "".join([msg.content if hasattr(msg, "content") else "" for msg in messages])
+            input_text = "".join(m.content for m in messages if hasattr(m, "content"))
             input_tokens = count_tokens(input_text)
-
-            logger.info(f"Invoking LLM with input tokens: {input_tokens}")
-
             response = llm.invoke(messages)
-
-            logger.info(f"Received LLM response: {response.content[:100]}...")
-
             output_tokens = count_tokens(response.content)
             total_tokens = input_tokens + output_tokens
-
-            logger.info(f"Updating token usage: increment by {total_tokens} tokens")
-
             update_token_usage_in_mongo(chatbot_id, total_tokens)
-
-            current_usage = get_token_usage_from_mongo(chatbot_id)
-            logger.info(f"Current token usage after update: {current_usage}")
-
-            if current_usage > MAX_TOKEN_LIMIT:
-                logger.warning(f"Token limit exceeded for chatbot {chatbot_id}")
-                return {"answer": "Sorry, this chatbot has reached the token usage limit. Please try again later."}
-
+            if get_token_usage_from_mongo(chatbot_id) > MAX_TOKEN_LIMIT:
+                return {"answer": "Token limit exceeded."}
             return {"answer": response.content}
-
         except Exception as e:
             logger.error(f"Error generating LLM response: {e}")
-            return {"answer": "Sorry, something went wrong generating the response."}
+            return {"answer": "Error generating response."}
 
     try:
         graph_builder = StateGraph(State).add_sequence([retrieve, generate])
         graph_builder.add_edge(START, "retrieve")
         graph = graph_builder.compile()
-        response = graph.invoke({"question": prompt})
-        return response.get("answer", "No response generated.")
+        result = graph.invoke({"question": prompt})
+        return result.get("answer", "No answer generated.")
     except Exception as e:
-        logger.error(f"Error in conversation graph: {e}")
-        return f"An error occurred during conversation: {e}"
+        logger.error(f"Graph execution error: {e}")
+        return f"Error in conversation: {e}"
