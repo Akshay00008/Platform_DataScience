@@ -167,11 +167,11 @@ def save_faqs_to_mongo(faq_list, chatbot_id, version_id):
         faq["source_type"] = "ai"
 
 # Exclude the 0th index from faq_list
-    print(faq_list)
+    # print(faq_list)
     faq_list_to_insert = faq_list[1:]
 
 # Insert into MongoDB
-    result = mongo_operation(operation="insertmany", query=faq_list)
+    result = mongo_operation(operation="insertmany", query=faq_list_to_insert)
     print(f"Inserted {len(result.inserted_ids)} FAQs into MongoDB.")
     return len(result.inserted_ids)
 
