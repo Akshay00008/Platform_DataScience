@@ -56,13 +56,9 @@ def load_faiss_index(chatbot_id, version_id, target_vector):
         return f"Error loading FAISS index: {e}"
 
 def search_faiss(query, faiss_load, k=10):
-    try:
-        results = faiss_load.similarity_search(query, k=k)
-        return [doc.page_content for doc in results]
-    except Exception as e:
-        # Raise error with a clear message
-        raise RuntimeError(f"FAISS similarity search failed: {e}")
-
+    results = faiss_load.similarity_search(query, k=k)
+    
+    return [doc.page_content for doc in results]
 
 def extract_existing_faqs(chunks):
     joined_chunks = "\n\n".join(chunks)
@@ -152,40 +148,33 @@ Return only the category name in one or two words, based on offerings or special
         faq["ai_category_name"] = category or "product"
     return faq_list
 
-from bson import ObjectId
-
 def save_faqs_to_mongo(faq_list, chatbot_id, version_id):
-    if not faq_list or len(faq_list) <= 1:
-        # Nothing to insert after skipping first faq
-        raise ValueError("No FAQs to save after skipping the first entry.")
-
+    if not faq_list:
+        print("No FAQs to save.")
+        return 0
     try:
         chatbot_oid = ObjectId(chatbot_id)
         version_oid = ObjectId(version_id)
     except Exception as e:
-        raise ValueError(f"Invalid ObjectId for chatbot_id or version_id: {e}")
+        print(f"Invalid ObjectId: {e}")
+        return 0
 
-    # Skip the first FAQ and prepare remaining FAQs for insertion
-    faq_list_to_insert = []
-    for faq in faq_list[1:]:  # skipping the 0th element
+    for index, faq in enumerate(faq_list, start=1):
         faq["chatbot_id"] = chatbot_oid
         faq["version_id"] = version_oid
         faq["is_enabled"] = False
         faq["category_name"] = "New"
         faq["ai_category_name"] = "Product"
         faq["source_type"] = "ai"
-        faq_list_to_insert.append(faq)
 
-    try:
-        result = mongo_operation(operation="insertmany", query=faq_list_to_insert)
-        if not result or not hasattr(result, "inserted_ids"):
-            raise RuntimeError("MongoDB insertion failed: No inserted IDs returned.")
-        inserted_count = len(result.inserted_ids)
-    except Exception as e:
-        raise RuntimeError(f"Failed to insert FAQs into MongoDB: {e}")
+# Exclude the 0th index from faq_list
+    print(faq_list)
+    # faq_list_to_insert = faq_list[1:]
 
-    return inserted_count
-
+# Insert into MongoDB
+    result = mongo_operation(operation="insertmany", query=faq_list)
+    print(f"Inserted {len(result.inserted_ids)} FAQs into MongoDB.")
+    return len(result.inserted_ids)
 
 def generate_tags_and_buckets_from_json(chunks, chatbot_id, version_id, url, target_count=50):
     joined_chunks = "\n\n".join(chunks[:30])
