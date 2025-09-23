@@ -56,8 +56,13 @@ def load_faiss_index(chatbot_id, version_id, target_vector):
         return f"Error loading FAISS index: {e}"
 
 def search_faiss(query, faiss_load, k=10):
-    results = faiss_load.similarity_search(query, k=k)
-    return [doc.page_content for doc in results]
+    try:
+        results = faiss_load.similarity_search(query, k=k)
+        return [doc.page_content for doc in results]
+    except Exception as e:
+        # Raise error with a clear message
+        raise RuntimeError(f"FAISS similarity search failed: {e}")
+
 
 def extract_existing_faqs(chunks):
     joined_chunks = "\n\n".join(chunks)
