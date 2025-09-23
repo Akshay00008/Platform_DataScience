@@ -16,7 +16,7 @@ from langchain.schema import HumanMessage, SystemMessage
 from langchain.docstore.document import Document
 from langchain.vectorstores import FAISS
 from langchain.embeddings import OpenAIEmbeddings
-from langchain.callbacks.base import CallbackManagerForLLMRun
+# from langchain.callbacks.base import CallbackManagerForLLMRun
 from langgraph.graph import START, StateGraph
 
 from Databases.mongo import mongo, DB_NAME  # centralized singleton client and DB name
