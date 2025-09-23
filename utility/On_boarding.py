@@ -20,16 +20,20 @@ from utility.retrain_bot import fetch_data
 from Databases.mongo_db import Bot_Retrieval, company_Retrieval
 from Databases.mongo import mongo_crud  # Centralized mongo_crud import
 
+
 # Configure logging
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
+
 # Load environment variables
 load_dotenv()
+
 
 # Constants
 MAX_TOKEN_LIMIT = 3_000_000
 TOKEN_COLLECTION = "token_tracker"
+
 
 # Initialize tokenizer for token counting
 encoding = tiktoken.get_encoding("cl100k_base")
@@ -87,11 +91,9 @@ def update_token_usage_in_mongo(chatbot_id: str, tokens_used: int):
                 "$setOnInsert": {"token_limit": MAX_TOKEN_LIMIT}
             }
         )
-        # If possible, check if update was acknowledged
         if not result or (hasattr(result, 'modified_count') and result.modified_count == 0):
-            logger.warning(f"No documents updated for chatbot_id {_id}")
+            logger.info(f"No documents updated for chatbot_id {_id}, possibly creating new record")
     except Exception as e:
-        # Log error but do not stop execution
         logger.error(f"Error updating token usage: {e}")
 
 
@@ -151,6 +153,7 @@ def load_llm(api_key: str, model_provider: str, model_name: str):
 
 
 llm = load_llm(api_key, model_provider, model_name)
+
 
 # Conversation and response cache
 conversation_state: dict[str, List[dict]] = {}
@@ -265,12 +268,10 @@ def Personal_chatbot(conversation_history: List[dict], prompt: str, languages: L
                      tone_and_style: str, greeting: str, guidelines: dict, company_info: str,
                      chatbot_id: str, version_id: str, user_id: str) -> str:
 
-
     class State(TypedDict):
         question: str
         context: List[Document]
         answer: str
-
 
     def retrieve(state: State) -> dict:
         cache_key = (chatbot_id, version_id, state["question"].lower())
@@ -278,8 +279,6 @@ def Personal_chatbot(conversation_history: List[dict], prompt: str, languages: L
             logger.info("Using cached retrieval results")
             return {"context": retrieval_cache[cache_key]}
         try:
-            import os
-
             faiss_dir = "/home/bramhesh_srivastav/Platform_DataScience/faiss_indexes"
             faiss_file_1 = f"{chatbot_id}_{version_id}_faiss_index"
             faiss_file_2 = f"{chatbot_id}_{version_id}_faiss_index_website"
@@ -339,7 +338,6 @@ def Personal_chatbot(conversation_history: List[dict], prompt: str, languages: L
             logger.error(f"Error retrieving documents: {e}")
             return {"context": []}
 
-
     def generate(state: State) -> dict:
         try:
             docs_content = "\n\n".join(doc.page_content for doc in state["context"])
@@ -362,13 +360,24 @@ def Personal_chatbot(conversation_history: List[dict], prompt: str, languages: L
             input_text = "".join([msg.content if hasattr(msg, "content") else "" for msg in messages])
             input_tokens = count_tokens(input_text)
 
+            logger.info(f"Invoking LLM with input tokens: {input_tokens}")
+
             response = llm.invoke(messages)
+
+            logger.info(f"Received LLM response: {response.content[:100]}...")  # Log first 100 chars
 
             output_tokens = count_tokens(response.content)
             total_tokens = input_tokens + output_tokens
 
+            logger.info(f"Updating token usage: increment by {total_tokens} tokens")
+
             update_token_usage_in_mongo(chatbot_id, total_tokens)
+
             current_usage = get_token_usage_from_mongo(chatbot_id)
+            if current_usage == 0:
+                logger.info(f"Token usage initially zero, creating new record for chatbot_id: {chatbot_id}")
+            logger.info(f"Current token usage after update: {current_usage}")
+
             if current_usage > MAX_TOKEN_LIMIT:
                 logger.warning(f"Token limit exceeded for chatbot {chatbot_id}")
                 return {"answer": "Sorry, this chatbot has reached the token usage limit. Please try again later."}
@@ -378,7 +387,6 @@ def Personal_chatbot(conversation_history: List[dict], prompt: str, languages: L
         except Exception as e:
             logger.error(f"Error generating LLM response: {e}")
             return {"answer": "Sorry, something went wrong generating the response."}
-
 
     try:
         graph_builder = StateGraph(State).add_sequence([retrieve, generate])
