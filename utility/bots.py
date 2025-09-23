@@ -66,6 +66,11 @@ You are an AI assistant. The following are website or document text chunks.
 
 Extract any frequently asked questions (FAQs) and their answers if available.
 
+Extract frequently asked questions (FAQs) and answers, but **do not** generate or select FAQs from pages or sections related to 'Contact', 'Management', team bios, addresses, or general company information.
+
+Focus only on the core website material—such as product/service details, offerings, specialties, features, and user-relevant topics.
+
+
 ---
 {joined_chunks}
 ---
@@ -85,6 +90,11 @@ def generate_faqs_from_vectors(chunks, target_count=50):
     joined_chunks = "\n\n".join(chunks[:30])
     prompt = f"""
 Based on the following content, generate {target_count} relevant and useful Frequently Asked Questions (FAQs) with concise answers.
+
+Extract frequently asked questions (FAQs) and answers, but **do not** generate or select FAQs from pages or sections related to 'Contact', 'Management', team bios, addresses, or general company information.
+
+Focus only on the core website material—such as product/service details, offerings, specialties, features, and user-relevant topics.
+
 
 ---
 {joined_chunks}
@@ -116,17 +126,18 @@ def categorize_faqs(faq_list, context_chunks):
     context_text = "\n\n".join(context_chunks[:30])
     for faq in faq_list:
         prompt = f"""
-You are an AI assistant analyzing FAQs based on the following website content:
-
+You are an AI assistant analyzing FAQs for a website.
 {context_text}
+Base categories only on core website sections (products, services, features, specialties). **Do not** assign categories like 'Contact', 'Management', team, address, or company background.
 
 Assign a concise and relevant category for this FAQ:
 
 Q: {faq['question']}
 A: {faq['answer']}
 
-Return only the category name in one or two words.
+Return only the category name in one or two words, based on offerings or specialties.
 """
+
         response = client.chat.completions.create(
             model="gpt-4o",
             messages=[{"role": "user", "content": prompt}],
