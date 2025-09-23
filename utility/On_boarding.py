@@ -81,15 +81,18 @@ def get_token_usage_from_mongo(chatbot_id: str) -> int:
 def update_token_usage_in_mongo(chatbot_id: str, tokens_used: int):
     try:
         _id = safe_objectid(chatbot_id)
+        update_doc = {
+            "$inc": {"total_tokens_used": tokens_used},
+            "$set": {"last_updated_at": datetime.utcnow()},
+            "$setOnInsert": {"token_limit": MAX_TOKEN_LIMIT}
+        }
+        logger.info(f"Updating token usage document in Mongo for chatbot_id {_id}: {update_doc}")
+
         result = mongo_operation(
             "update",
             TOKEN_COLLECTION,
             query={"chatbot_id": _id},
-            update={
-                "$inc": {"total_tokens_used": tokens_used},
-                "$set": {"last_updated_at": datetime.utcnow()},
-                "$setOnInsert": {"token_limit": MAX_TOKEN_LIMIT}
-            }
+            update=update_doc
         )
         if not result or (hasattr(result, 'modified_count') and result.modified_count == 0):
             logger.info(f"No documents updated for chatbot_id {_id}, possibly creating new record")
