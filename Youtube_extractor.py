@@ -5,6 +5,7 @@ from bson import ObjectId
 from googleapiclient.discovery import build
 from pymongo import errors
 from Databases.mongo import mongo_crud, DB_NAME  # Import DB_NAME and mongo_crud from mongo.py
+import urllib.parse
 
 load_dotenv()
 
@@ -27,11 +28,18 @@ def mongo_operation(operation, collection_name=COLLECTION_VIDEOS, query=None, up
     )
 
 def extract_playlist_id_from_url(playlist_url: str) -> str:
+    # Print the URL for debugging purposes
+    print(f"Received Playlist URL: {playlist_url}")
+
+    # Decode the URL in case it is URL encoded
+    playlist_url = urllib.parse.unquote(playlist_url)
+
+    # Updated regex to allow more flexible matching of URL parameters
     match = re.match(r'https://www\.youtube\.com/playlist\?list=([a-zA-Z0-9_-]+)', playlist_url)
     if match:
         return match.group(1)
     else:
-        raise ValueError("Invalid YouTube playlist URL")
+        raise ValueError("Invalid YouTube playlist URL. Make sure the URL is in the correct format: https://www.youtube.com/playlist?list=<playlist_id>")
 
 def insert_video_data(video_data: dict) -> bool:
     try:
