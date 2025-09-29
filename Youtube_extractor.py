@@ -34,7 +34,7 @@ def extract_playlist_id_from_url(playlist_url: str) -> str:
     # Decode the URL in case it is URL encoded
     playlist_url = urllib.parse.unquote(playlist_url)
 
-    # Updated regex to allow more flexible matching of URL parameters
+    # Updated regex to capture playlist_id and ignore any additional parameters
     match = re.match(r'https://www\.youtube\.com/playlist\?list=([a-zA-Z0-9_-]+)', playlist_url)
     if match:
         return match.group(1)
