@@ -79,6 +79,7 @@ def get_token_usage_from_mongo(chatbot_id: str) -> int:
 def update_token_usage_in_mongo(chatbot_id: str, tokens_used: int):
     try:
         _id = safe_objectid(chatbot_id)
+        _id = ObjectId(_id)
         query = {"chatbot_id": _id}
         update_doc = {
             "$inc": {"total_tokens_used": tokens_used},
