@@ -68,20 +68,34 @@ def get_token_usage_from_mongo(chatbot_id: str) -> int:
             logger.info(f"Token usage retrieved: {record['total_tokens_used']}")
             return record["total_tokens_used"]
         logger.info("No token usage record found; returning 0")
-        return 0
+        return {"total_tokens_used": 0}
     except Exception as e:
         logger.error(f"Error fetching token usage: {e}")
-        return 0
+        return {"error": str(e)}
+
+def safe_objectid(chatbot_id: str) -> ObjectId:
+    """Safely converts a chatbot_id string to an ObjectId."""
+    try:
+        return ObjectId(chatbot_id)
+    except Exception as e:
+        # Handle invalid ObjectId format
+        logger.error(f"Error converting chatbot_id {chatbot_id} to ObjectId: {e}")
+        raise ValueError(f"Invalid chatbot_id format: {chatbot_id}")
 
 def update_token_usage_in_mongo(chatbot_id: str, tokens_used: int):
+    """Updates the token usage for the chatbot in MongoDB."""
     try:
+        # Convert chatbot_id to ObjectId safely
         _id = safe_objectid(chatbot_id)
+        
         query = {"chatbot_id": _id}
         update_doc = {
             "$inc": {"total_tokens_used": tokens_used},
             "$set": {"last_updated_at": datetime.utcnow()},
             "$setOnInsert": {"token_limit": MAX_TOKEN_LIMIT}
         }
+        
+        # Perform the update operation
         result = mongo_operation(
             "update",
             TOKEN_COLLECTION,
@@ -89,12 +103,16 @@ def update_token_usage_in_mongo(chatbot_id: str, tokens_used: int):
             update=update_doc,
             upsert=True
         )
+        
+        # Handle the result of the update operation
         if not result or (hasattr(result, 'modified_count') and result.modified_count == 0):
-            logger.warning(f"No documents updated for chatbot_id {_id}, upsert might have created new document.")
+            logger.warning(f"No documents updated for chatbot_id {_id}, upsert might have created a new document.")
         else:
             logger.info(f"Token usage updated by {tokens_used} for chatbot_id {_id}")
     except Exception as e:
+        # Log any errors that occur during the update process
         logger.error(f"Error updating token usage: {e}")
+
 
 # Initialize embeddings and LLM from environment
 try:
