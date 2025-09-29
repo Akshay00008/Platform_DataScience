@@ -34,6 +34,21 @@ TOKEN_COLLECTION = "token_tracker"
 # Initialize tokenizer for token counting
 encoding = tiktoken.get_encoding("cl100k_base")
 
+# Initialize embeddings and LLM from environment
+try:
+    if not os.environ.get("OPENAI_API_KEY"):
+        os.environ["OPENAI_API_KEY"] = getpass.getpass("Enter API key for OpenAI:")
+    embeddings = OpenAIEmbeddings(model="text-embedding-3-large")
+    api_key = os.getenv("OPENAI_API_KEY")
+    model_name = os.getenv("GPT_model")
+    model_provider = os.getenv("GPT_model_provider")
+    if not api_key or not model_name or not model_provider:
+        raise ValueError("Missing API key or model settings")
+    logger.info("Successfully initialized embeddings and LLM configurations")
+except Exception as e:
+    logger.error(f"Initialization failed: {e}")
+    raise
+
 def safe_objectid(value):
     try:
         if ObjectId.is_valid(value):
@@ -87,15 +102,31 @@ def update_token_usage_in_mongo(chatbot_id: str, tokens_used: int):
     try:
         # Convert chatbot_id to ObjectId safely
         _id = safe_objectid(chatbot_id)
-        
+
+        # Fetch the current token usage from MongoDB
+        current_usage_doc = mongo_operation("read", TOKEN_COLLECTION, query={"chatbot_id": _id})
+
+        current_usage = 0
+        if current_usage_doc:
+            # Extract the 'total_tokens_used' field, default to 0 if not found
+            current_usage = current_usage_doc.get("total_tokens_used", 0)
+        else:
+            logger.info(f"No existing token usage found for chatbot_id {_id}. Starting with 0 tokens.")
+
+        # Check if the current usage exceeds the MAX_TOKEN_LIMIT
+        if current_usage >= MAX_TOKEN_LIMIT:
+            logger.warning(f"Chatbot {_id} has reached the maximum token limit of {MAX_TOKEN_LIMIT}.")
+            return  # Exit if the token limit is reached
+
+        # Update the token usage if the limit is not reached
         query = {"chatbot_id": _id}
         update_doc = {
-            "$inc": {"total_tokens_used": tokens_used},
-            "$set": {"last_updated_at": datetime.utcnow()},
-            "$setOnInsert": {"token_limit": MAX_TOKEN_LIMIT}
+            "$inc": {"total_tokens_used": tokens_used},  # Increment the token usage
+            "$set": {"last_updated_at": datetime.utcnow()},  # Set the last updated timestamp
+            "$setOnInsert": {"token_limit": MAX_TOKEN_LIMIT}  # Insert token limit if the document is new
         }
-        
-        # Perform the update operation
+
+        # Perform the update operation (upsert to create a new document if none exists)
         result = mongo_operation(
             "update",
             TOKEN_COLLECTION,
@@ -103,31 +134,19 @@ def update_token_usage_in_mongo(chatbot_id: str, tokens_used: int):
             update=update_doc,
             upsert=True
         )
-        
+
         # Handle the result of the update operation
         if not result or (hasattr(result, 'modified_count') and result.modified_count == 0):
             logger.warning(f"No documents updated for chatbot_id {_id}, upsert might have created a new document.")
         else:
-            logger.info(f"Token usage updated by {tokens_used} for chatbot_id {_id}")
+            logger.info(f"Token usage updated by {tokens_used} for chatbot_id {_id}.")
+
     except Exception as e:
         # Log any errors that occur during the update process
-        logger.error(f"Error updating token usage: {e}")
+        logger.error(f"Error updating token usage for chatbot_id {_id}: {e}")
 
 
-# Initialize embeddings and LLM from environment
-try:
-    if not os.environ.get("OPENAI_API_KEY"):
-        os.environ["OPENAI_API_KEY"] = getpass.getpass("Enter API key for OpenAI:")
-    embeddings = OpenAIEmbeddings(model="text-embedding-3-large")
-    api_key = os.getenv("OPENAI_API_KEY")
-    model_name = os.getenv("GPT_model")
-    model_provider = os.getenv("GPT_model_provider")
-    if not api_key or not model_name or not model_provider:
-        raise ValueError("Missing API key or model settings")
-    logger.info("Successfully initialized embeddings and LLM configurations")
-except Exception as e:
-    logger.error(f"Initialization failed: {e}")
-    raise
+
 
 def cosine_similarity(vec1: List[float], vec2: List[float]) -> float:
     v1, v2 = np.array(vec1), np.array(vec2)
