@@ -1,4 +1,4 @@
-from .new_routes import onboard, scrapper,vector_embeddings,extract,llm_endpoint,get_status,faqs_endpoint,guidance_endpoint,handoff_guidance_endpoint,retrain_bot,welcome_message
+from .new_routes import onboard, scrapper,vector_embeddings,extract,llm_endpoint,get_status,faqs_endpoint,guidance_endpoint,handoff_guidance_endpoint,retrain_bot,welcome_message,copy_faiss_index
 from flask import Blueprint
 
 
@@ -15,3 +15,4 @@ routes.route(("/guidance"), methods = ['POST', 'GET'])(guidance_endpoint)
 routes.route(("/handoff-guidance"), methods = ['POST', 'GET'])(handoff_guidance_endpoint)
 routes.route(("/retrain"), methods = ['POST', 'GET'])(retrain_bot)
 routes.route(("/welcome_message"), methods = ['POST', 'GET'])(welcome_message)
+routes.route(("/deployment"), methods = ['POST'])(copy_faiss_index)

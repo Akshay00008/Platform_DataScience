@@ -339,7 +339,7 @@ def welcome_message():
     return {"message": translate}
 
 
-@app.route('deployment', methods=['POST'])
+@app.route('/deployment', methods=['POST'])
 def copy_faiss_index():
     data = request.get_json()
     old_chatbot_id = data.get('old_chatbot_id')
