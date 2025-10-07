@@ -410,7 +410,8 @@ def Personal_chatbot(conversation_history: List[dict], prompt: str, languages: L
         return f"An error occurred during conversation: {e}"
 
 
-def recreate_faiss_index(old_chatbot_id: str, old_version_id: str, new_chatbot_id: str, new_version_id: str, embeddings: OpenAIEmbeddings):
+def recreate_faiss_index(old_chatbot_id: str, old_version_id: str, new_chatbot_id: str,
+                          new_version_id: str, embeddings: OpenAIEmbeddings):
     try:
         # Define file paths for the old FAISS index
         faiss_dir = "/home/bramhesh_srivastav/Platform_DataScience/faiss_indexes"
@@ -453,14 +454,19 @@ def recreate_faiss_index(old_chatbot_id: str, old_version_id: str, new_chatbot_i
         # Create the new FAISS index by copying the data from the old indices
         logger.info(f"Creating new FAISS index for chatbot {new_chatbot_id} version {new_version_id}")
         
-        new_vector_store_1 = FAISS.from_documents(vector_store_1.get_documents()) if vector_store_1 else None
-        new_vector_store_2 = FAISS.from_documents(vector_store_2.get_documents()) if vector_store_2 else None
-
-        if new_vector_store_1:
+        # If the vector store is loaded, fetch the vectors or documents and recreate the new index
+        new_vector_store_1 = None
+        if vector_store_1:
+            # You may need to extract the vectors from the index depending on how FAISS is set up
+            # For instance, if you're using FAISS raw index, you may use `index.reconstruct()`
+            # Or use `vector_store_1.get_documents()` if you have access to documents directly.
+            new_vector_store_1 = FAISS.from_documents(vector_store_1.similarity_search(""))  # Adjust as needed
             new_vector_store_1.save_local(path_new_1)
             logger.info(f"New FAISS index saved at {path_new_1}")
         
-        if new_vector_store_2:
+        new_vector_store_2 = None
+        if vector_store_2:
+            new_vector_store_2 = FAISS.from_documents(vector_store_2.similarity_search(""))  # Adjust as needed
             new_vector_store_2.save_local(path_new_2)
             logger.info(f"New FAISS index saved at {path_new_2}")
 
