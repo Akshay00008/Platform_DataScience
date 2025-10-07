@@ -2,9 +2,10 @@ from flask import Flask, request, jsonify
 from flask_cors import CORS
 import json
 import time
+import os 
 from threading import Thread, Lock
 from werkzeug.middleware.proxy_fix import ProxyFix
-from .On_boarding import chatbot
+from .On_boarding import chatbot, recreate_faiss_index
 from utility.web_Scrapper import crawl_website
 from Databases.mongo_db import Bot_Retrieval, website_tag_saving
 from embeddings_creator import embeddings_from_gcb, embeddings_from_website_content
@@ -336,3 +337,36 @@ def welcome_message():
     lang = data.get("lang")
     translate = bots.translate_welcome_message(message, lang)
     return {"message": translate}
+
+
+@app.route('deployment', methods=['POST'])
+def copy_faiss_index():
+    data = request.get_json()
+    old_chatbot_id = data.get('old_chatbot_id')
+    old_version_id = data.get('old_version_id')
+    new_chatbot_id = data.get('new_chatbot_id')
+    new_version_id = data.get('new_version_id')
+
+    # Validate required fields
+    if not all([old_chatbot_id, old_version_id, new_chatbot_id, new_version_id]):
+        return jsonify({'error': 'All chatbot and version IDs are required'}), 400
+
+    try:
+        # Call the function to recreate the FAISS index
+        recreate_faiss_index(
+            old_chatbot_id,
+            old_version_id,
+            new_chatbot_id,
+            new_version_id,
+            # Make sure embeddings are passed
+        )
+        loggs.info(f"✅ FAISS index copied from {old_chatbot_id} v{old_version_id} to {new_chatbot_id} v{new_version_id}")
+        return jsonify({'message': 'FAISS index copy initiated successfully.'}), 200
+    except Exception as e:
+        loggs.error(f"❌ FAISS index copy error: {e}")
+        return jsonify({'error': str(e)}), 500
+
+
+
+   
+
