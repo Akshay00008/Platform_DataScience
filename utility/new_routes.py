@@ -358,7 +358,7 @@ def copy_faiss_index():
             old_version_id,
             new_chatbot_id,
             new_version_id,
-            # Make sure embeddings are passed
+            # embeddings  # Make sure embeddings are passed
         )
         loggs.info(f"✅ FAISS index copied from {old_chatbot_id} v{old_version_id} to {new_chatbot_id} v{new_version_id}")
         return jsonify({'message': 'FAISS index copy initiated successfully.'}), 200

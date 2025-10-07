@@ -411,13 +411,14 @@ def Personal_chatbot(conversation_history: List[dict], prompt: str, languages: L
 
 
 def recreate_faiss_index(old_chatbot_id: str, old_version_id: str, new_chatbot_id: str,
-                          new_version_id: str, embeddings: OpenAIEmbeddings):
+                          new_version_id: str):
     try:
         # Define file paths for the old FAISS index
         faiss_dir = "/home/bramhesh_srivastav/Platform_DataScience/faiss_indexes"
         old_faiss_file_1 = f"{old_chatbot_id}_{old_version_id}_faiss_index"
         old_faiss_file_2 = f"{old_chatbot_id}_{old_version_id}_faiss_index_website"
-        
+        embeddings = OpenAIEmbeddings(model="text-embedding-3-large")  # Define the embedding model
+
         # Define file paths for the new FAISS index
         new_faiss_file_1 = f"{new_chatbot_id}_{new_version_id}_faiss_index"
         new_faiss_file_2 = f"{new_chatbot_id}_{new_version_id}_faiss_index_website"
@@ -457,16 +458,14 @@ def recreate_faiss_index(old_chatbot_id: str, old_version_id: str, new_chatbot_i
         # If the vector store is loaded, fetch the vectors or documents and recreate the new index
         new_vector_store_1 = None
         if vector_store_1:
-            # You may need to extract the vectors from the index depending on how FAISS is set up
-            # For instance, if you're using FAISS raw index, you may use `index.reconstruct()`
-            # Or use `vector_store_1.get_documents()` if you have access to documents directly.
-            new_vector_store_1 = FAISS.from_documents(vector_store_1.similarity_search(""))  # Adjust as needed
+            # Use the embedding model to transform documents and create a new vector store
+            new_vector_store_1 = FAISS.from_documents(vector_store_1.similarity_search(""), embedding=embeddings)
             new_vector_store_1.save_local(path_new_1)
             logger.info(f"New FAISS index saved at {path_new_1}")
         
         new_vector_store_2 = None
         if vector_store_2:
-            new_vector_store_2 = FAISS.from_documents(vector_store_2.similarity_search(""))  # Adjust as needed
+            new_vector_store_2 = FAISS.from_documents(vector_store_2.similarity_search(""), embedding=embeddings)
             new_vector_store_2.save_local(path_new_2)
             logger.info(f"New FAISS index saved at {path_new_2}")
 
