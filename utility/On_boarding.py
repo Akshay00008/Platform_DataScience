@@ -435,26 +435,29 @@ def Personal_chatbot(conversation_history: List[dict], prompt: str, languages: L
         return f"An error occurred during conversation: {e}"
 
 
-def recreate_faiss_index(old_chatbot_id: str, old_version_id: str, new_chatbot_id: str,
-                          new_version_id: str):
+def recreate_faiss_index(old_chatbot_id: str, old_version_id: str, new_chatbot_id: str, new_version_id: str):
     try:
-        # Define file paths for the old FAISS index
+        # --- Normalize version IDs (remove any leading 'v' or 'V') ---
+        old_version_id = old_version_id.lstrip("vV")
+        new_version_id = new_version_id.lstrip("vV")
+
+        # Define base FAISS directory
         faiss_dir = "/home/bramhesh_srivastav/Platform_DataScience/faiss_indexes"
+        embeddings = OpenAIEmbeddings(model="text-embedding-3-large")
+
+        # Construct old and new FAISS file names (clean)
         old_faiss_file_1 = f"{old_chatbot_id}_{old_version_id}_faiss_index"
         old_faiss_file_2 = f"{old_chatbot_id}_{old_version_id}_faiss_index_website"
-        embeddings = OpenAIEmbeddings(model="text-embedding-3-large")  # Define the embedding model
-
-        # Define file paths for the new FAISS index
         new_faiss_file_1 = f"{new_chatbot_id}_{new_version_id}_faiss_index"
         new_faiss_file_2 = f"{new_chatbot_id}_{new_version_id}_faiss_index_website"
 
+        # Build paths
         path_old_1 = os.path.join(faiss_dir, old_faiss_file_1)
         path_old_2 = os.path.join(faiss_dir, old_faiss_file_2)
-        
         path_new_1 = os.path.join(faiss_dir, new_faiss_file_1)
         path_new_2 = os.path.join(faiss_dir, new_faiss_file_2)
 
-        # Load the old FAISS index if it exists
+        # Load old FAISS indexes
         vector_store_1 = None
         vector_store_2 = None
 
@@ -464,7 +467,7 @@ def recreate_faiss_index(old_chatbot_id: str, old_version_id: str, new_chatbot_i
                 logger.info(f"Loaded FAISS index from {path_old_1}")
             except Exception as e:
                 logger.error(f"Failed to load FAISS index {path_old_1}: {e}")
-        
+
         if os.path.exists(path_old_2):
             try:
                 vector_store_2 = FAISS.load_local(path_old_2, embeddings, allow_dangerous_deserialization=True)
@@ -472,27 +475,27 @@ def recreate_faiss_index(old_chatbot_id: str, old_version_id: str, new_chatbot_i
             except Exception as e:
                 logger.error(f"Failed to load FAISS index {path_old_2}: {e}")
 
-        # Check if old indices were found
+        # Check if any index exists
         if not vector_store_1 and not vector_store_2:
             logger.error("No FAISS indexes found to migrate. Exiting function.")
             return
 
-        # Create the new FAISS index by copying the data from the old indices
-        logger.info(f"Creating new FAISS index for chatbot {new_chatbot_id} version {new_version_id}")
-        
-        # If the vector store is loaded, fetch the vectors or documents and recreate the new index
-        new_vector_store_1 = None
+        logger.info(f"Creating new FAISS index for chatbot {new_chatbot_id}, version {new_version_id}")
+
+        # --- Recreate and Save new indexes ---
         if vector_store_1:
-            # Use the embedding model to transform documents and create a new vector store
-            new_vector_store_1 = FAISS.from_documents(vector_store_1.similarity_search(""), embedding=embeddings)
-            new_vector_store_1.save_local(path_new_1)
-            logger.info(f"New FAISS index saved at {path_new_1}")
-        
-        new_vector_store_2 = None
+            docs = vector_store_1.similarity_search("") or []
+            if docs:
+                new_vector_store_1 = FAISS.from_documents(docs, embedding=embeddings)
+                new_vector_store_1.save_local(path_new_1)
+                logger.info(f"✅ New FAISS index saved at {path_new_1}")
+
         if vector_store_2:
-            new_vector_store_2 = FAISS.from_documents(vector_store_2.similarity_search(""), embedding=embeddings)
-            new_vector_store_2.save_local(path_new_2)
-            logger.info(f"New FAISS index saved at {path_new_2}")
+            docs = vector_store_2.similarity_search("") or []
+            if docs:
+                new_vector_store_2 = FAISS.from_documents(docs, embedding=embeddings)
+                new_vector_store_2.save_local(path_new_2)
+                logger.info(f"✅ New FAISS index saved at {path_new_2}")
 
     except Exception as e:
-        logger.error(f"Error recreating FAISS index: {e}")
+        logger.error(f"Error recreating FAISS index: {e}", exc_info=True)

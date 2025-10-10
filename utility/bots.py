@@ -87,7 +87,7 @@ A: ...
     )
     return response.choices[0].message.content
 
-def generate_faqs_from_vectors(chunks, target_count=50):
+def generate_faqs_from_vectors(chunks, target_count):
     joined_chunks = "\n\n".join(chunks[:30])
     prompt = f"""
 Based on the following content, generate {target_count} relevant and useful Frequently Asked Questions (FAQs) with concise answers.
