@@ -89,14 +89,18 @@ def process_scraping(url, chatbot_id, version_id):
         top_chunks = bots.search_faiss(query, faisll_load)
         extracted_content_text = bots.generate_tags_and_buckets_from_json(top_chunks, chatbot_id, version_id, url)
         loggs.info(f"Tags and vectors generated for URL: {url}")
-        mark_thread_done()
+        # mark_thread_done()
     except Exception as e:
         loggs.info(f"Error during background scraping: {str(e)}")
+    finally:
+        mark_thread_done()
 
 def background_embedding_task(bucket, blobs, chatbot_id, version_id):
     try:
         loggs.info(f"Started embedding for bucket: {bucket}, blobs: {blobs}")
         embeddings_from_gcb(chatbot_id, version_id, bucket_name=bucket, blob_names=blobs)
+        result = description_from_gcs(bucket, blobs, chatbot_id, version_id)
+        loggs.info(f"✅ Embedding job started for bucket: {bucket}")
         loggs.info(f"Completed embedding generation for blobs in bucket: {bucket}")
     except Exception as e:
         loggs.info(f"Error during embedding generation: {str(e)}")
@@ -193,9 +197,9 @@ def vector_embeddings():
         with lock:
             active_threads += 1
         Thread(target=background_embedding_task, args=(bucket_name, blob_names, chatbot_id, version_id)).start()
-        result = description_from_gcs(bucket_name, blob_names, chatbot_id, version_id)
-        loggs.info(f"✅ Embedding job started for bucket: {bucket_name}")
         return jsonify({"result": "Embedding started in background."}), 200
+   
+        # return jsonify({"result": "Embedding started in background."}), 200
     except Exception as e:
         loggs.info(f"Embedding error: {e}")
         return jsonify({"error": str(e)}), 500

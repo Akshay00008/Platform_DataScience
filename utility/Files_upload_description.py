@@ -61,12 +61,13 @@ def generate_openai_output(text):
 {text}"""
 
     response = client.chat.completions.create(
-        model="gpt-4o",
+       model="gpt-4o-mini",
+
         messages=[{"role": "user", "content": prompt}],
         temperature=0.3,
     )
     content = response.choices[0].message.content.strip()
-    print(content)
+    # print(content)
     return content
 
 def read_pdf_from_gcs(bucket_name, blob_names, chatbot_id, version_id):
