@@ -61,7 +61,7 @@ def generate_openai_output(text):
 {text}"""
 
     response = client.chat.completions.create(
-       model="gpt-4o-mini",
+        model="gpt-4o",
 
         messages=[{"role": "user", "content": prompt}],
         temperature=0.3,
