@@ -10,13 +10,16 @@ MONGODB_URI = os.getenv("MONGODB_URI")
 DB_NAME = os.getenv("DB_NAME", "defaultdb")
 
 
-def mongo_crud(collection_name, operation, query={}, update={}, start=0, stop=10, projection=None, **kwargs):
+def mongo_crud(collection_name, operation, query=None, update=None, start=0, stop=10, projection=None, **kwargs):
     if not MONGODB_URI:
         raise RuntimeError("MONGODB_URI environment variable is not set")
 
     client = pymongo.MongoClient(MONGODB_URI)
     db = client[DB_NAME]
     collection = db[collection_name]
+
+    query = query or {}
+    update = update or {}
 
     if operation == "create":
         return collection.insert_one(query).inserted_id
@@ -33,9 +36,20 @@ def mongo_crud(collection_name, operation, query={}, update={}, start=0, stop=10
     elif operation == "findone":
         return collection.find_one(query)
     elif operation == "update":
-        return collection.find_one_and_update(query, {"$set": update}, **kwargs)
+        # ✅ Check if update already contains MongoDB operators
+        if any(key.startswith("$") for key in update.keys()):
+            update_doc = update
+        else:
+            update_doc = {"$set": update}
+
+        # Use update_one if you need upsert or return info
+        return collection.update_one(query, update_doc, **kwargs)
     elif operation == "updatemany":
-        return collection.update_many(query, update=update, **kwargs)
+        if any(key.startswith("$") for key in update.keys()):
+            update_doc = update
+        else:
+            update_doc = {"$set": update}
+        return collection.update_many(query, update_doc, **kwargs)
     elif operation == "delete":
         return collection.delete_one(query).deleted_count
     elif operation == "deletemany":

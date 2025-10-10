@@ -277,7 +277,7 @@ def faqs_endpoint():
         generated_faq_text = bots.generate_faqs_from_vectors(top_chunks, target_count=generated_faq_count)
         print(generated_faq_text)
         generated_faqs = bots.parse_faq_text(generated_faq_text)
-        inserted_generated_count = bots.save_faqs_to_mongo(generated_faq_text, chatbot_id, version_id)
+        inserted_generated_count = bots.save_faqs_to_mongo(generated_faqs, chatbot_id, version_id)
         return jsonify({
             "inserted_existing_faq_count": inserted_existing_count,
             "inserted_generated_faq_count": inserted_generated_count,

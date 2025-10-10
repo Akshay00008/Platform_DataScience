@@ -76,27 +76,52 @@ def get_token_usage_from_mongo(chatbot_id: str) -> int:
         return 0
 
 
+# def update_token_usage_in_mongo(chatbot_id: str, tokens_used: int):
+#     try:
+#         _id = safe_objectid(chatbot_id)
+#         query = {"chatbot_id": _id}
+#         update_doc = {
+#             "$inc": {"total_tokens_used": tokens_used},
+#             "$set": {"last_updated_at": datetime.utcnow()},
+#             "$setOnInsert": {"token_limit": MAX_TOKEN_LIMIT}
+#         }
+#         result = mongo_operation(
+#             "update",
+#             TOKEN_COLLECTION,
+#             query=query,
+#             update=update_doc,
+#             upsert=True  # Ensures create if not present
+#         )
+#         if not result or (hasattr(result, 'modified_count') and result.modified_count == 0):
+#             logger.warning(f"No documents updated for chatbot_id {_id}, upsert might have created new document.")
+#     except Exception as e:
+#         logger.error(f"Error updating token usage: {e}")
+
 def update_token_usage_in_mongo(chatbot_id: str, tokens_used: int):
     try:
         _id = safe_objectid(chatbot_id)
         query = {"chatbot_id": _id}
+
+        # Proper operator-based update document
         update_doc = {
             "$inc": {"total_tokens_used": tokens_used},
             "$set": {"last_updated_at": datetime.utcnow()},
-            "$setOnInsert": {"token_limit": MAX_TOKEN_LIMIT}
+            "$setOnInsert": {"token_limit": MAX_TOKEN_LIMIT},
         }
+
+        # Ensure mongo_crud handles update operators correctly
         result = mongo_operation(
-            "update",
-            TOKEN_COLLECTION,
+            operation="update",
+            collection_name=TOKEN_COLLECTION,
             query=query,
             update=update_doc,
-            upsert=True  # Ensures create if not present
+            upsert=True  # Make sure upsert is forwarded properly
         )
-        if not result or (hasattr(result, 'modified_count') and result.modified_count == 0):
-            logger.warning(f"No documents updated for chatbot_id {_id}, upsert might have created new document.")
-    except Exception as e:
-        logger.error(f"Error updating token usage: {e}")
 
+        if not result or (hasattr(result, 'modified_count') and result.modified_count == 0):
+            logger.warning(f"No documents updated for chatbot_id {_id}. Upsert may have created a new one.")
+    except Exception as e:
+        logger.error(f"Error updating token usage: {e}", exc_info=True)
 
 # Initialize embeddings and LLM from environment
 try:
