@@ -196,7 +196,13 @@ def vector_embeddings():
         blob_names = filenames
         with lock:
             active_threads += 1
+        if isinstance(bucket_name, dict):
+
+           bucket_name = bucket_name.get("bucketName") or bucket_name.get("name")
+
         Thread(target=background_embedding_task, args=(bucket_name, blob_names, chatbot_id, version_id)).start()
+            
+        # Thread(target=background_embedding_task, args=(bucket_name, blob_names, chatbot_id, version_id)).start()
         return jsonify({"result": "Embedding started in background."}), 200
    
         # return jsonify({"result": "Embedding started in background."}), 200

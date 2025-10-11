@@ -265,14 +265,26 @@ def chatbot(chatbot_id: str, version_id: str, prompt: str, user_id: str) -> str:
             return fix_resp
 
         logger.info("Step 11: Setting bot response meta")
-        greeting = bot_info[0].get("greeting_message", "Hello!")
-        purpose = bot_info[0].get(
-            "purpose",
-            "You are an AI assistant helping users with their queries on behalf of the organization. "
-            "You provide clear and helpful responses while avoiding personal details and sensitive data."
-        )
-        languages = bot_info[0].get("supported_languages", ["English"])
-        tone_style = bot_info[0].get("tone_style", "Friendly and professional")
+        if not bot_info or not isinstance(bot_info, list) or not bot_info[0]:
+            bot_info = [{}]
+
+            bot_data = bot_info[0]
+
+            # --- Fallback defaults ---
+            greeting = bot_data.get("greeting_message") or "Hello! Welcome to your AI assistant 🤖"
+            purpose = bot_data.get(
+                "purpose"
+            ) or (
+                "You are an AI assistant helping users with their queries on behalf of the organization. "
+                "Provide clear, accurate, and friendly responses while maintaining professionalism."
+            )
+            languages = bot_data.get("supported_languages") or ["English"]
+            tone_style = bot_data.get("tone_style") or "Friendly and professional"
+
+            logger.info(f"Greeting: {greeting}")
+            logger.info(f"Purpose: {purpose}")
+            logger.info(f"Languages: {languages}")
+            logger.info(f"Tone/Style: {tone_style}")
 
         # Robust company info handling
         default_company_info = (
@@ -389,18 +401,45 @@ def Personal_chatbot(conversation_history: List[dict], prompt: str, languages: L
         try:
             docs_content = "\n\n".join(doc.page_content for doc in state["context"])
             messages = [
-                SystemMessage(
-                    f"""
-                    Role: You are a personal chatbot with the purpose: {purpose}.
-                    Fluent in languages: {languages}.
-                    Greeting: {greeting}
-                    Conversation history: {conversation_history}
-                    Company info: {company_info}
-                    Context from documents: {docs_content}
-                    Maintain tone/style: {tone_and_style}
-                    Special keywords trigger connection to live agent.
-                    """
-                ),
+            SystemMessage(
+    f"""
+    You are a witty, engaging, and concise AI assistant. 
+    Your goal is to deliver answers that grab attention fast, stay crisp, and add a spark of personality. 
+    Use clear structure, catchy phrasing, and—when appropriate—light humor or analogies. 
+    Always stay professional, factual, and helpful. Never ramble. Never editorialize.
+
+    🎉 Welcome! Step into a conversation powered by your personal chatbot.
+    - Role: {purpose}
+    - Languages: {languages}
+    - Greeting: {greeting}
+
+    ⚡️ Keep responses sharp and vibrant!
+    📝 In play:
+    - Recent chat: {conversation_history}
+    - Company info: {company_info}
+    - Document highlights: 
+      {docs_content}
+    - Style/voice: {tone_and_style}
+
+    🚨 Need a human? Use a magic word to summon a live agent.
+
+    🧩 Guardrails:
+    - ❌ Do NOT answer or discuss topics related to gods, religion, spirituality, faith, rituals, or worship.
+    - ❌ Do NOT comment on or generate content related to war, conflict, terrorism, or violent acts.
+    - ❌ Do NOT respond to or produce adult, explicit, or pornographic material.
+    - ❌ Do NOT express political opinions, bias, or endorsements.
+    - ❌ Do NOT share or assume personal data about the user.
+    - ✅ You MAY answer country, timezone, or location-based questions *only if* relevant to the user's purpose or document context.
+    - ✅ When unsure or when a restricted topic arises, politely decline and redirect to a relevant or neutral topic.
+
+    🎯 Core style principles:
+    - Be informative yet conversational.
+    - Be confident, not verbose.
+    - Charm through brevity and clarity.
+    - Value every word.
+    """
+),
+
                 HumanMessage(state["question"])
             ]
 
@@ -435,67 +474,75 @@ def Personal_chatbot(conversation_history: List[dict], prompt: str, languages: L
         return f"An error occurred during conversation: {e}"
 
 
+import os
+import shutil
+import logging
+from langchain_community.vectorstores import FAISS
+from langchain_openai import OpenAIEmbeddings
+
+logger = logging.getLogger(__name__)
+
 def recreate_faiss_index(old_chatbot_id: str, old_version_id: str, new_chatbot_id: str, new_version_id: str):
+    """
+    Clone existing FAISS indexes (_faiss_index and _faiss_index_website)
+    to a new chatbot-version pair, preserving all embeddings & metadata.
+    New files will follow the naming format:
+    {chatbot_id}_{version_id}_faiss_index
+    {chatbot_id}_{version_id}_faiss_index_website
+    """
     try:
-        # --- Normalize version IDs (remove any leading 'v' or 'V') ---
+        # --- Normalize version IDs (remove leading v/V) ---
         old_version_id = old_version_id.lstrip("vV")
         new_version_id = new_version_id.lstrip("vV")
 
-        # Define base FAISS directory
+        # --- Define base directory and embeddings ---
         faiss_dir = "/home/bramhesh_srivastav/Platform_DataScience/faiss_indexes"
         embeddings = OpenAIEmbeddings(model="text-embedding-3-large")
 
-        # Construct old and new FAISS file names (clean)
-        old_faiss_file_1 = f"{old_chatbot_id}_{old_version_id}_faiss_index"
-        old_faiss_file_2 = f"{old_chatbot_id}_{old_version_id}_faiss_index_website"
-        new_faiss_file_1 = f"{new_chatbot_id}_{new_version_id}_faiss_index"
-        new_faiss_file_2 = f"{new_chatbot_id}_{new_version_id}_faiss_index_website"
+        # --- Construct full file names ---
+        old_faiss_files = [
+            f"{old_chatbot_id}_{old_version_id}_faiss_index",
+            f"{old_chatbot_id}_{old_version_id}_faiss_index_website"
+        ]
+        new_faiss_files = [
+            f"{new_chatbot_id}_{new_version_id}_faiss_index",
+            f"{new_chatbot_id}_{new_version_id}_faiss_index_website"
+        ]
 
-        # Build paths
-        path_old_1 = os.path.join(faiss_dir, old_faiss_file_1)
-        path_old_2 = os.path.join(faiss_dir, old_faiss_file_2)
-        path_new_1 = os.path.join(faiss_dir, new_faiss_file_1)
-        path_new_2 = os.path.join(faiss_dir, new_faiss_file_2)
+        os.makedirs(faiss_dir, exist_ok=True)
 
-        # Load old FAISS indexes
-        vector_store_1 = None
-        vector_store_2 = None
+        logger.info(
+            f"🔄 FAISS index copy initiated from "
+            f"{old_chatbot_id}_{old_version_id} → {new_chatbot_id}_{new_version_id}"
+        )
 
-        if os.path.exists(path_old_1):
+        # --- Copy both indexes if available ---
+        for old_file, new_file in zip(old_faiss_files, new_faiss_files):
+            path_old = os.path.join(faiss_dir, old_file)
+            path_new = os.path.join(faiss_dir, new_file)
+
+            if not os.path.exists(path_old):
+                logger.warning(f"⚠️ Source index not found: {path_old}")
+                continue
+
             try:
-                vector_store_1 = FAISS.load_local(path_old_1, embeddings, allow_dangerous_deserialization=True)
-                logger.info(f"Loaded FAISS index from {path_old_1}")
+                # Load old index just to validate structure
+                FAISS.load_local(path_old, embeddings, allow_dangerous_deserialization=True)
+
+                # Remove destination if already exists
+                if os.path.exists(path_new):
+                    shutil.rmtree(path_new)
+
+                # Copy the entire folder
+                shutil.copytree(path_old, path_new)
+
+                logger.info(f"✅ FAISS index copied successfully: {path_new}")
+
             except Exception as e:
-                logger.error(f"Failed to load FAISS index {path_old_1}: {e}")
+                logger.error(f"❌ Error copying FAISS index from {path_old} → {path_new}: {e}")
 
-        if os.path.exists(path_old_2):
-            try:
-                vector_store_2 = FAISS.load_local(path_old_2, embeddings, allow_dangerous_deserialization=True)
-                logger.info(f"Loaded FAISS index from {path_old_2}")
-            except Exception as e:
-                logger.error(f"Failed to load FAISS index {path_old_2}: {e}")
-
-        # Check if any index exists
-        if not vector_store_1 and not vector_store_2:
-            logger.error("No FAISS indexes found to migrate. Exiting function.")
-            return
-
-        logger.info(f"Creating new FAISS index for chatbot {new_chatbot_id}, version {new_version_id}")
-
-        # --- Recreate and Save new indexes ---
-        if vector_store_1:
-            docs = vector_store_1.similarity_search("") or []
-            if docs:
-                new_vector_store_1 = FAISS.from_documents(docs, embedding=embeddings)
-                new_vector_store_1.save_local(path_new_1)
-                logger.info(f"✅ New FAISS index saved at {path_new_1}")
-
-        if vector_store_2:
-            docs = vector_store_2.similarity_search("") or []
-            if docs:
-                new_vector_store_2 = FAISS.from_documents(docs, embedding=embeddings)
-                new_vector_store_2.save_local(path_new_2)
-                logger.info(f"✅ New FAISS index saved at {path_new_2}")
+        logger.info("🎯 FAISS index recreation completed successfully.")
 
     except Exception as e:
-        logger.error(f"Error recreating FAISS index: {e}", exc_info=True)
+        logger.error(f"🔥 Error recreating FAISS index: {e}", exc_info=True)
+
