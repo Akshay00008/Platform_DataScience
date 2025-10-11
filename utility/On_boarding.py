@@ -264,29 +264,29 @@ def chatbot(chatbot_id: str, version_id: str, prompt: str, user_id: str) -> str:
             logger.info("Step 10 Completed: Fix scenario handled")
             return fix_resp
 
-        logger.info("Step 11: Setting bot response meta")
+        logger.info("Step 11: Generating LLM response")
         if not bot_info or not isinstance(bot_info, list) or not bot_info[0]:
-            bot_info = [{}]
+                bot_info = [{}]
 
-            bot_data = bot_info[0]
+        bot_data = bot_info[0]
 
-            # --- Fallback defaults ---
-            greeting = bot_data.get("greeting_message") or "Hello! Welcome to your AI assistant 🤖"
-            purpose = bot_data.get(
-                "purpose"
-            ) or (
-                "You are an AI assistant helping users with their queries on behalf of the organization. "
-                "Provide clear, accurate, and friendly responses while maintaining professionalism."
-            )
-            languages = bot_data.get("supported_languages") or ["English"]
-            tone_style = bot_data.get("tone_style") or "Friendly and professional"
+        # --- Fallback defaults ---
+        greeting = bot_data.get("greeting_message") or "Hello! Welcome to your AI assistant 🤖"
+        purpose = bot_data.get(
+            "purpose"
+        ) or (
+            "You are an AI assistant helping users with their queries on behalf of the organization. "
+            "Provide clear, accurate, and friendly responses while maintaining professionalism."
+        )
+        languages = bot_data.get("supported_languages") or ["English"]
+        tone_style = bot_data.get("tone_style") or "Friendly and professional"
 
-            logger.info(f"Greeting: {greeting}")
-            logger.info(f"Purpose: {purpose}")
-            logger.info(f"Languages: {languages}")
-            logger.info(f"Tone/Style: {tone_style}")
+        logger.info(f"Greeting: {greeting}")
+        logger.info(f"Purpose: {purpose}")
+        logger.info(f"Languages: {languages}")
+        logger.info(f"Tone/Style: {tone_style}")
 
-        # Robust company info handling
+        # --- Robust company info handling ---
         default_company_info = (
             "You are an AI assistant representing the organization. "
             "Your task is to help customers with their needs and guide them with relevant information, "
@@ -299,6 +299,7 @@ def chatbot(chatbot_id: str, version_id: str, prompt: str, user_id: str) -> str:
 
         logger.info("Step 11 Completed: Meta info set")
 
+        # --- Cache logic ---
         logger.info("Step 12: Checking cache for previous response")
         cache_key = (user_id, chatbot_id, version_id, prompt_lower)
         if cache_key in llm_response_cache:
@@ -307,8 +308,17 @@ def chatbot(chatbot_id: str, version_id: str, prompt: str, user_id: str) -> str:
 
         logger.info("Step 13: Sending request to Personal_chatbot LLM")
         llm_resp = Personal_chatbot(
-            conversation_state[user_id], prompt, languages, purpose, tone_style, greeting, guidelines,
-            company_info, chatbot_id, version_id, user_id
+            conversation_state[user_id],
+            prompt,
+            languages,
+            purpose,
+            tone_style,
+            greeting,
+            guidelines,
+            company_info,
+            chatbot_id,
+            version_id,
+            user_id
         )
         llm_response_cache[cache_key] = llm_resp
         conversation_state[user_id].append({"role": "bot", "content": llm_resp})
